@@ -5,7 +5,7 @@ import pathlib
 import time
 
 PATH = pathlib.Path(os.environ.get(
-    "SIDECAR_CACHE", pathlib.Path.home() / ".cache" / "cc-sidecar.json"))
+    "SIDECAR_CACHE", pathlib.Path.home() / ".cache" / "cc-waitwhat.json"))
 LIMIT = 200
 
 

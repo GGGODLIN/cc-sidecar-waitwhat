@@ -1,4 +1,4 @@
-# cc-sidecar
+# cc-waitwhat
 
 在 Claude Code 之外重講它剛剛說的話。CC 不知道你用過這個工具。
 
@@ -10,7 +10,7 @@
 
 數字是**往回幾個 turn**，不是選 session——選 session 用 `-s`。一個 turn 是「你問一次 + CC 那一輪的所有回應」，中間穿插的工具呼叫不會把它切開。
 
-`ww` = wait what。兩套 system prompt：不帶數字用「跟丟了」那套（補前提、從頭敘事），帶數字用「白話」那套（大幅砍、結尾補一句「白話就是」）。
+`ww` = wait what。兩套 system prompt：不帶數字用「跟丟了」那套（補前提、從頭敘事），帶數字用「白話」那套（大幅砍、給一個建議而不是列選項）。**兩套都可以換成你自己的**，見下面〈換掉 prompt〉。
 
 ## 為什麼要跑在 CC 外面
 
@@ -52,7 +52,19 @@ terminal_title_stripped  → 人類可讀的名字
 ln -sf "$PWD/bin/ww" ~/.local/bin/ww
 ```
 
-Ghostty 的下拉終端機當觸發面（`~/.config/ghostty/config`）：
+### 在哪叫出來
+
+**唯一的要求是：那個 shell 不能是你跑 CC 的那個。** 在 CC 裡打 `!` 跑 shell 一樣不合格，那個輸出會進它的 context。
+
+| 你的終端機 | 做法 |
+|---|---|
+| Ghostty | 下拉終端機，見下 |
+| iTerm2 | Preferences → Profiles → Keys → 設一個 Hotkey Window |
+| tmux | `bind-key w split-window -h 'ww 1; read'` 或直接開一個常駐 pane |
+| kitty | `map cmd+shift+w launch --type=os-window ww 1` |
+| 任何 | 就開第二個終端機視窗，切過去打 `ww 1` |
+
+Ghostty 的設定（`~/.config/ghostty/config`）：
 
 ```
 keybind = global:cmd+shift+w=toggle_quick_terminal
@@ -60,11 +72,9 @@ quick-terminal-position = top
 quick-terminal-screen = macos-menu-bar
 ```
 
-按 cmd+shift+W 從螢幕上方滑出一個獨立 shell，打 `ww 1`，再按一次收回。
+按 cmd+shift+W 從螢幕邊緣滑出一個獨立 shell，打 `ww 1`，再按一次收回。`global:` 前綴在 macOS 需要授權輔助使用給 Ghostty（系統設定 → 隱私權與安全性 → 輔助使用），沒授權的話快捷鍵只在 Ghostty 有 focus 時有效。
 
-`global:` 前綴需要 macOS 授權輔助使用給 Ghostty（系統設定 → 隱私權與安全性 → 輔助使用），Ghostty 會在 reload 時主動請求。沒授權的話快捷鍵只在 Ghostty 有 focus 時有效。
-
-**不要改用 herdr 開 pane** ——那會把 herdr 的 `focused` 挪到新 pane，訊號當場失效。
+**如果你用 herdr，不要用它開 pane 來顯示**——那會把 herdr 的 `focused` 挪到新 pane，選 session 的訊號當場失效。
 
 ## 誰提供這次的重講
 
@@ -115,6 +125,23 @@ SIDECAR_API_KEY=...          # http 那條的 key；不給也不報錯，只是�
 
 輸入是本機 JSONL、輸出是純文字，中間那顆模型是純粹的可替換件。
 
+## 換掉 prompt
+
+內建的兩套是**起點，不是成品**。重講的品質幾乎全部由 prompt 決定，而什麼叫「講清楚」每個人的標準不一樣——所以這裡預期你會改。
+
+把檔案放進 `~/.config/cc-waitwhat/`（`SIDECAR_PROMPT_DIR` 可改位置）就會蓋掉內建的：
+
+```
+~/.config/cc-waitwhat/wait-what.md    ← ww（整段脈絡）用的
+~/.config/cc-waitwhat/plain.md        ← ww N（白話重講）用的
+```
+
+兩個各自獨立，只放一個就只蓋那一個。檔案是空的會退回內建，不會送出空 prompt。
+
+內建那兩套**刻意不指定輸出語言**，只寫「用跟原文相同的語言回答」——所以你的 CC 講英文就回英文、講中文就回中文。要固定語言就在自己的 prompt 裡寫死。
+
+`~/.claude/glossary.md` 存在的話會附在 prompt 後面當個人語彙表，讓重講沿用你自己的說法。但**只在要重講的內容比語彙表長的時候才附**——短 turn 配上長語彙表，模型看到的幾乎全是詞彙，會答非所問（實測過一次：2,722 字的 payload 裡語彙表佔 2,050 字，模型回「你提供的內容缺少需要重講的技術說明」）。
+
 ## 終端機樣式
 
 模型回的是 markdown，直接印在終端機上會看到一堆 `**`、反引號和 ``` 圍欄。
@@ -137,7 +164,7 @@ SIDECAR_API_KEY=...          # http 那條的 key；不給也不報錯，只是�
 
 ## 快取
 
-存在 `~/.cache/cc-sidecar.json`（`SIDECAR_CACHE` 可改）。key 是來源 + system prompt + 完整 payload 的 SHA-256，每條來源的答案各佔一格。`auto` 模式查快取時每格都試，命中哪格就標哪個來源。
+存在 `~/.cache/cc-waitwhat.json`（`SIDECAR_CACHE` 可改）。key 是來源 + system prompt + 完整 payload 的 SHA-256，每條來源的答案各佔一格。`auto` 模式查快取時每格都試，命中哪格就標哪個來源。
 
 實測同一條指令連跑兩次：**12.09 秒 → 0.877 秒**。
 
@@ -155,7 +182,7 @@ ww 1 --no-cache    # 強制重問一次
 - **重講可能引入錯誤**。實測有一次把 `poll_interval` 的 2.0 秒講成 0.2 秒——紀錄裡兩個數字都出現過，模型挑錯邊。重講是二手資料，拿它定位、不要拿它當事實。
 - **依賴 CC 的 session schema**（目前 2.1.270）。CC 改版可能動 `origin.kind` / `isSidechain` 這些欄位。壞掉的方向是沒輸出，不是靜默給錯答案。
 - **`herdr agent read` 讀不到對話**。畫面底部只有輸入框和 statusline，對話早捲上去了，所以走 JSONL 而不是讀畫面。
-- **CC 還在跑的時候重講，拿到的是半截**。`-l` 的狀態欄會標「還在跑」還是「等你回」。
+- **CC 還在跑的時候重講，拿到的是半截**。`-l` 的狀態欄會標「還在跑」還是「等你回」；直接跑 `ww` 而對象還在跑時會先印一行警告。
 
 ## 需要什麼
 
@@ -171,4 +198,4 @@ Python 版本開發於 3.14，只用標準庫，最舊用到的 API 是 `subproc
 python3 -m unittest discover -s tests
 ```
 
-54 個，覆蓋解析層、找 session、快取、終端機渲染與來源路由（其中 2 個在沒裝 rich 的環境會 skip）。`cmd` 那條用 `cat` / `head` / `false` 當假 LLM 測，`from_files` 用 fixture JSONL 測，都不需要真的模型或 herdr。herdr 那條依賴外部狀態，沒有自動化測試——驗證方式是實跑 `ww -l` 看它有沒有回出帶狀態的清單。
+59 個，覆蓋解析層、找 session、prompt 覆寫、快取、終端機渲染與來源路由（其中 2 個在沒裝 rich 的環境會 skip）。`cmd` 那條用 `cat` / `head` / `false` 當假 LLM 測，`from_files` 用 fixture JSONL 測，都不需要真的模型或 herdr。herdr 那條依賴外部狀態，沒有自動化測試——驗證方式是實跑 `ww -l` 看它有沒有回出帶狀態的清單。

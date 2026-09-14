@@ -9,10 +9,13 @@ GLOSSARY = pathlib.Path.home() / ".claude" / "glossary.md"
 STATUS_LABEL = {"idle": "等你回", "working": "還在跑", "blocked": "卡住了", "done": "做完了"}
 
 
-def glossary_block():
+def glossary_block(content_length=None):
     if not GLOSSARY.exists():
         return None
-    return "# 使用者的個人語彙表（重講時優先用這裡的說法）\n" + GLOSSARY.read_text()
+    text = GLOSSARY.read_text().strip()
+    if not text or (content_length is not None and len(text) >= content_length):
+        return None
+    return "# 使用者的個人語彙表（重講時優先用這裡的說法）\n" + text
 
 
 def repo_glossary_block(cwd):
@@ -35,18 +38,18 @@ def build_full(row, tail=None):
     meta, turns, tools = parse.transcript(row["path"], tail)
     if not turns:
         return None
+    body = "\n\n".join(render_turn(group) for group in parse.split_turns(turns))
     blocks = [f"# 這個 session 的基本資料\n"
               f"視窗標題：{row['title']}\n"
               f"工作目錄：{meta.get('cwd')}\n"
               f"開始時間：{meta.get('started')}"]
-    for block in (glossary_block(), repo_glossary_block(meta.get("cwd"))):
+    for block in (glossary_block(len(body)), repo_glossary_block(meta.get("cwd"))):
         if block:
             blocks.append(block)
     if tools:
         unique = list(dict.fromkeys(tools))
         blocks.append(f"# 這個 session 做過的事（工具呼叫 {len(tools)} 次，去重後取最近 60 筆）\n"
                       + "\n".join("- " + item for item in unique[-60:]))
-    body = "\n\n".join(render_turn(group) for group in parse.split_turns(turns))
     blocks.append("# 對話紀錄\n" + body)
     return "\n\n---\n\n".join(blocks)
 
@@ -55,13 +58,14 @@ def build_recent(row, count):
     groups = parse.recent_turns(row["path"], count)
     if not groups:
         return None
-    blocks = []
-    block = glossary_block()
-    if block:
-        blocks.append(block)
     heading = ("# 要重講的內容（最後一個 turn）" if count == 1
                else f"# 要重講的內容（最後 {len(groups)} 個 turn）")
-    blocks.append(heading + "\n\n" + "\n\n".join(render_turn(group) for group in groups))
+    body = heading + "\n\n" + "\n\n".join(render_turn(group) for group in groups)
+    blocks = []
+    block = glossary_block(len(body))
+    if block:
+        blocks.append(block)
+    blocks.append(body)
     return "\n\n---\n\n".join(blocks)
 
 
@@ -119,16 +123,19 @@ def main(argv):
     row = rows[position]
 
     if options.turns is None:
-        payload, system, label = build_full(row, options.tail), prompts.WAIT_WHAT, "跟丟了"
+        payload, system, label = build_full(row, options.tail), prompts.wait_what(), "跟丟了"
     elif options.turns < 1:
         print("turn 數要大於 0", file=sys.stderr)
         return 1
     else:
-        payload, system = build_recent(row, options.turns), prompts.PLAIN
+        payload, system = build_recent(row, options.turns), prompts.plain()
         label = "白話" if options.turns == 1 else f"白話 x{options.turns}"
     if not payload:
         print(f"「{row['title']}」還沒有可重講的內容", file=sys.stderr)
         return 1
+    if row["status"] == "working":
+        print(f"⚠ 這支 agent 還在跑，最後一輪可能只有半截（打 -l 看狀態）",
+              file=sys.stderr, flush=True)
 
     if not options.no_cache:
         for candidate in model.candidate_models(options.source, options.model):
