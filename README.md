@@ -54,6 +54,8 @@ terminal_title_stripped  → 人類可讀的名字
 ln -sf "$PWD/bin/ww" ~/.local/bin/ww
 ```
 
+你需要 Python 和一個 LLM。沒有必裝的 Python 套件；裝了 `rich` 版面會好看很多。
+
 ### 在哪叫出來
 
 唯一的要求是那個 shell 不能是你跑 CC 的那個。 在 CC 裡打 `!` 跑 shell 一樣不合格，那個輸出會進它的 context。
@@ -179,14 +181,9 @@ ww 1 --no-cache    # 強制重問一次
 - **依賴 CC 的 session schema**（目前 2.1.270）。CC 改版可能動 `origin.kind` / `isSidechain` 這些欄位。壞掉的方向是沒輸出，不是靜默給錯答案。
 - **`herdr agent read` 讀不到對話**。畫面底部只有輸入框和 statusline，對話早捲上去了，所以走 JSONL 而不是讀畫面。
 - **CC 還在跑的時候重講，拿到的是半截**。`-l` 的狀態欄會標「還在跑」還是「等你回」；直接跑 `ww` 而對象還在跑時會先印一行警告。
+- `ps` 與 `lsof` 用來過濾已關閉的 session。缺了不會壞，那一步會直接跳過，只是清單裡會多出已經關掉的對話。
 
-## 需要什麼
-
-一個 LLM（`claude` / `ollama` / `llm` / 任何 OpenAI 相容端點），加 Python。沒有必裝的 Python 套件；裝了 `rich` 版面會好看很多。
-
-Python 版本開發於 3.14，只用標準庫，最舊用到的 API 是 `subprocess.run(capture_output=...)`（3.7）。**3.7–3.13 沒有實測過**。
-
-`ps` 與 `lsof` 用來過濾已關閉的 session，缺了不會壞——那一步會直接跳過，只是清單裡會多出已經關掉的對話。
+開發於 Python 3.14，只用標準庫，最舊用到的 API 是 `subprocess.run(capture_output=...)`（3.7），但 3.7 到 3.13 之間都沒有實測過。
 
 ## 測試
 
