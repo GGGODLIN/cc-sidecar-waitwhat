@@ -31,9 +31,9 @@
 
 畫面靜止在那個沒有變化的 CC 終端機上。
 
-壓字：**它不知道你剛剛沒聽懂。**
+兩行壓字依序出現：**session 外請它重講**（白）、**不要污染 context**（灰）。然後專案名。
 
-停一拍。然後專案名。
+原本是「它不知道你剛剛沒聽懂。」——那句是效果，不是做法，使用者看完不知道要幹嘛。換成現在這版：第一行講做法，第二行講理由。deadpan 的笑點少了一點，但這支片是要貼在 README 開頭的，看完就要知道工具在做什麼比較重要。
 
 ## User flow worth showing
 
@@ -123,7 +123,7 @@ Music: 淡出
 Transition mood: 慢淡 → Scene 6
 
 ### Scene 6 — 落款 — 2s
-壓字「它不知道你剛剛沒聽懂。」停 1.2s。底下小字出現 `cc-sidecar-waitwhat`。音樂已經全無。
+「session 外請它重講」先出現，0.65s 後「不要污染 context」接上（較暗），再 0.65s 後小字 `cc-sidecar-waitwhat`。三段依序、不同明度，讀起來是做法→理由→名字。音樂已經全無。
 Sequential/interaction: none
 Audio intent: 完全靜音收尾
 Audio-coupled idea: none

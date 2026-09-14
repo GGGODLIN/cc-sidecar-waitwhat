@@ -56,6 +56,8 @@
       .big {
         font-size: 78px; font-weight: 700; color: #e6edf3; letter-spacing: 2px;
       }
+      #outroL1, #outroL2 { font-size: 64px; letter-spacing: 1px; }
+      #outroL2 { color: #9aa4b0; }
       .sub { margin-top: 26px; font-size: 30px; color: #7a828d; letter-spacing: 3px; }
       .mid { font-size: 46px; color: #9aa4b0; letter-spacing: 1px; }
       .scrim {
@@ -128,8 +130,9 @@
 
       <div id="endScrim" class="scrim clip" data-start="19.6" data-duration="2.4" style="opacity:0"></div>
       <div id="outro" class="overlay clip" data-start="19.8" data-duration="2.2"
-           style="top: 450px; opacity: 0; z-index: 22">
-        <div class="big">它不知道你剛剛沒聽懂。</div>
+           style="top: 400px; opacity: 0; z-index: 22">
+        <div class="big" id="outroL1">session 外請它重講</div>
+        <div class="big" id="outroL2" style="margin-top: 18px">不要污染 context</div>
         <div class="sub" id="outroName">cc-sidecar-waitwhat</div>
       </div>
     </div>
@@ -170,8 +173,10 @@
 
       tl.to("#quick", { y: -530, duration: 0.42, ease: "power2.in" }, 18.1);
       tl.to("#endScrim", { opacity: 1, duration: 0.6 }, 19.7);
-      tl.fromTo("#outro", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 20.0);
-      tl.fromTo("#outroName", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 21.0);
+      tl.fromTo("#outro", { opacity: 0 }, { opacity: 1, duration: 0.01 }, 19.95);
+      tl.fromTo("#outroL1", { opacity: 0 }, { opacity: 1, duration: 0.45 }, 20.0);
+      tl.fromTo("#outroL2", { opacity: 0 }, { opacity: 1, duration: 0.45 }, 20.65);
+      tl.fromTo("#outroName", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 21.3);
 
       window.__timelines["main"] = tl;
     </script>
