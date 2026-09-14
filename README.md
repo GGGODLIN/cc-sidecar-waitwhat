@@ -10,13 +10,13 @@
 | `ww 1` | 看不懂這一輪，白話重講 | 你的問題 + 那一輪的完整回應 | 2,315 字 → 184 token，10.9 秒 |
 | `ww 3` | 往回三輪都重講 | 最後三個 turn | 7,290 字 → 301 token，11.0 秒 |
 
-數字是**往回幾個 turn**，不是選 session——選 session 用 `-s`。一個 turn 是「你問一次 + CC 那一輪的所有回應」，中間穿插的工具呼叫不會把它切開。
+數字代表**往回幾個 turn**，選 session 請用 `-s`。這裡的一個 turn 算「你問一次加上 CC 那一輪的回應全部」，中間呼叫工具不會拆開算。
 
-`ww` = wait what。兩套 system prompt：不帶數字用「跟丟了」那套（補前提、從頭敘事），帶數字用「白話」那套（大幅砍、給一個建議而不是列選項）。兩套都可以換成你自己的。
+`ww` 就是 wait what。內建兩套 system prompt：不加數字用「跟丟了」（補足前情、從頭梳理）；加數字用「白話」（大砍細節、只給一個明確建議）。兩套都能換。
 
 ## 為什麼要跑在 CC 外面
 
-在 CC 裡打 `/wait-what` 有四個代價。sidecar 不是四個都消掉：
+在 CC 裡下 `/wait-what` 有四個代價，sidecar 能避開其中幾項：
 
 | 代價 | 預設路徑（`claude -p`）| 換一家模型 |
 |---|---|---|
@@ -25,13 +25,13 @@
 | 3. 「請你重講」這個動作本身扭曲後續推理 | 消掉 | 消掉 |
 | 4. 花 token | 沒消，只是從 CC 的 context 搬到另一次呼叫，還多付一整套 harness 的 system context | 消掉（改花別家的）|
 
-真正的保證只有一條：**目標 session 的 JSONL 裡不會出現任何這次重講的痕跡**。那個檔是 CC 單向寫出去的，外面讀不留痕。所以在 CC 裡打的東西一律不合格，`!` 前綴跑 shell 也一樣。
+這裡的核心保證只有一個：**目標 session 的 JSONL 裡完全不會留下重講痕跡**。CC 單向寫檔，外部工具只讀不寫。只要在 CC 裡敲指令，就算加 `!` 跑 shell 都不行，全都會寫進去。
 
-**但「不留痕」只對目標 session 成立，不對整棵 `~/.claude` 樹成立**：`claude -p` 預設會在 cwd 對應的目錄下另開一支 session 檔（實測 300–500KB，大部分是 hook 與 MCP 的載入紀錄），所以預設指令帶了 `--no-session-persistence`。那些檔即使產生了也不會混進 `ww -l`——headless 模式寫的 user 紀錄沒有 `origin.kind`，`is_human` 會排除。
+**但「不留痕跡」只限目標 session，不保證整棵 `~/.claude` 都乾淨**：`claude -p` 預設會在工作目錄開一個新的 session 檔（實測 300–500KB，多半在記載入 hook 與 MCP 的過程），因此預設指令加了 `--no-session-persistence`。即便產生了這些檔案，也不會出現在 `ww -l` 裡。headless 寫入的紀錄沒有 `origin.kind`，`is_human` 會直接過濾掉。
 
 ## 怎麼知道要重講哪一支
 
-`herdr agent list` 直接給答案：
+有 `herdr agent list` 就很簡單：
 
 ```
 agent_session.value      → session id，對到 ~/.claude/projects/**/<id>.jsonl
@@ -40,13 +40,13 @@ agent_status             → idle = 球在你這邊，working = agent 還在跑
 terminal_title_stripped  → 人類可讀的名字
 ```
 
-不帶參數就取 `focused: true` 那支。`-l` 列清單，`-s 3` 選第三支。
+不給參數就抓 `focused: true` 那支。用 `-l` 看清單，用 `-s 3` 選第三支。
 
-**沒有 herdr 的話，下面這條就是你的主路徑**（不是備胎）：掃 `~/.claude/projects/`，每支取「最後一則真人打字訊息」排序，標題用 **CC 最後說的話**（不是你說的——你常常只回「a」「1」，認不出是哪個對話），cwd 從 session 檔的 `cwd` 欄位讀（不是從目錄名逆推，那個 slug 把 `/` 和 `.` 都換成 `-`，本來就不可逆），再用 `ps` + `lsof` 拿到還活著的 claude 進程 cwd，把已經關掉的 session 濾掉。
+**沒裝 herdr，請走這條主路徑**：掃描 `~/.claude/projects/`，依每支的「最後一則真人訊息」排序。清單標題直接抓 **CC 最後說的話**，因為真人常只回「a」或「1」，看不出是哪件事。工作目錄直接從檔案裡的 `cwd` 欄位拿（目錄名會把 `/` 和 `.` 轉成 `-`，轉不回來），再用 `ps` 搭配 `lsof` 查活著的進程，濾掉關閉的 session。
 
-比 herdr 少的是：沒有 `focused`（不知道你正在看哪個）、沒有 `idle`/`working` 狀態、換 session 時慢一拍（新 session 還沒有真人訊息前，舊的仍在清單上）。
+這做法比 herdr 缺了幾樣：拿不到 `focused`、不知對象是 `idle` 還是 `working`、換對話時會慢一拍（新 session 在你打字前，舊的還佔著位子）。
 
-**不要用 mtime 排序**。背景 agent 一直寫檔，你正在讀的那支反而最久沒動，排序方向是反的。
+**不要用 mtime 排序**。背景 agent 一直寫檔，你盯著看的那支反而最久沒動，排出來正好是反的。
 
 ## 裝
 
@@ -54,11 +54,11 @@ terminal_title_stripped  → 人類可讀的名字
 ln -sf "$PWD/bin/ww" ~/.local/bin/ww
 ```
 
-你需要 Python 和一個 LLM。沒有必裝的 Python 套件；裝了 `rich` 版面會好看很多。
+需要 Python 和一個 LLM。沒有非裝不可的 Python 套件；裝了 `rich` 排版會好看很多。
 
 ### 在哪叫出來
 
-唯一的要求是那個 shell 不能是你跑 CC 的那個。 在 CC 裡打 `!` 跑 shell 一樣不合格，那個輸出會進它的 context。
+只要不在 CC 所在的 shell 裡跑就行。CC 裡加 `!` 跑 shell 一樣出局，輸出照樣進 context。
 
 | 你的終端機 | 做法 |
 |---|---|
@@ -68,7 +68,7 @@ ln -sf "$PWD/bin/ww" ~/.local/bin/ww
 | kitty | `map cmd+shift+w launch --type=os-window ww 1` |
 | 任何 | 就開第二個終端機視窗，切過去打 `ww 1` |
 
-Ghostty 的設定（`~/.config/ghostty/config`）：
+Ghostty 設定範例（`~/.config/ghostty/config`）：
 
 ```
 keybind = global:cmd+shift+w=toggle_quick_terminal
@@ -76,22 +76,22 @@ quick-terminal-position = top
 quick-terminal-screen = macos-menu-bar
 ```
 
-按 cmd+shift+W 從螢幕邊緣滑出一個獨立 shell，打 `ww 1`，再按一次收回。`global:` 前綴在 macOS 需要授權輔助使用給 Ghostty（系統設定 → 隱私權與安全性 → 輔助使用），沒授權的話快捷鍵只在 Ghostty 有 focus 時有效。
+按 cmd+shift+W 會叫出懸浮 shell，跑完 `ww 1` 再按一次收合。在 macOS 設 `global:` 必須開輔助使用權限給 Ghostty（系統設定 → 隱私權與安全性 → 輔助使用），沒給的話快捷鍵只在 Ghostty 視窗裡有用。
 
-**如果你用 herdr，不要用它開 pane 來顯示**——那會把 herdr 的 `focused` 挪到新 pane，選 session 的訊號當場失效。
+**用 herdr 的話，千萬別叫它開新 pane 顯示**。focus 跑掉，選 session 的邏輯馬上抓瞎。
 
 ## 誰提供這次的重講
 
-重講只需要「一個能吃文字吐文字的 LLM」。`auto` 先試 `cmd`，不成才退 `http`：
+重講只要有個能吃文字、吐文字的 LLM 就行。設為 `auto` 時先試 `cmd`，不行再換 `http`：
 
 | 來源 | 是什麼 | 實測 |
 |---|---|---|
 | `cmd` | 一個 shell 指令，prompt 從 stdin 進、答案從 stdout 出 | 34.2 秒（`claude -p --model sonnet`）／ 14.9 秒（自製的 wrapper）|
 | `http` | 任何吃 OpenAI 格式 `/v1/chat/completions` 的端點 | 8.8 秒（本機 proxy → Gemini Flash）|
 
-零設定的預設是 `cmd`：`SIDECAR_CMD` 沒設的話，PATH 裡有 `claude` 就自動用 `claude -p --no-session-persistence`。這個工具的使用者按定義都有它。代價是慢，CLI 啟動開銷加上去大概是 HTTP 那條的三到四倍。
+什麼都沒設時走 `cmd`：沒填 `SIDECAR_CMD` 且 PATH 找得到 `claude`，就用 `claude -p --no-session-persistence`。既然你用 CC，電腦裡肯定有。缺點就是慢，CLI 啟動的時間算進去，比 HTTP 慢了三到四倍。
 
-想快一點就指定模型或換工具：
+要快就換模型或換工具：
 
 ```bash
 SIDECAR_CMD='claude -p --model haiku'
@@ -100,9 +100,9 @@ SIDECAR_CMD='llm -m gpt-4o'
 SIDECAR_CMD='my-own-wrapper'          # 自己寫一支讀 stdin 印 stdout 的就能接
 ```
 
-指令用 shell 的拆詞規則切開（`shlex`），但**不經過 shell**，所以 pipe 和重導向不會生效。
+指令會照 shell 規則切參數（`shlex`），但**不經過 shell 執行**，不能寫 pipe 或重導向。
 
-每次跑完最後一行都寫出實際來源：
+每次跑完，最後一行會印出實際來源：
 
 ```
 ── 白話：View A  (de0e89f8，送出 3,083 字 → cmd:my-own-wrapper)      ← 送出前就知道要去哪
@@ -111,7 +111,7 @@ SIDECAR_CMD='my-own-wrapper'          # 自己寫一支讀 stdin 印 stdout 的�
 ── 白話：View A  (快取命中 · 來源 cmd:claude -p)
 ```
 
-指定單一來源時是**嚴格模式**——`--source cmd` 失敗就 exit 1，不會偷偷換別條。
+選定來源就是**嚴格模式**。下了 `--source cmd` 只要失敗就 exit 1，不主動 fallback。
 
 ### 環境變數
 
@@ -125,28 +125,28 @@ SIDECAR_API_KEY=...          # http 那條的 key；不給也不報錯，只是�
 
 ## 換掉 prompt
 
-內建的兩套是起點，不是成品。重講的品質幾乎全部由 prompt 決定，而什麼叫「講清楚」每個人的標準不一樣，所以這裡預期你會改。
+預設 prompt 是打底用的，建議自己改。講得清不清楚很主觀，重講品質又幾乎全看 prompt。
 
-把檔案放進 `~/.config/cc-sidecar-waitwhat/`（`SIDECAR_PROMPT_DIR` 可改位置）就會蓋掉內建的：
+把檔案放進 `~/.config/cc-sidecar-waitwhat/`（可用 `SIDECAR_PROMPT_DIR` 自訂）就能覆蓋：
 
 ```
 ~/.config/cc-sidecar-waitwhat/wait-what.md    ← ww（整段脈絡）用的
 ~/.config/cc-sidecar-waitwhat/plain.md        ← ww N（白話重講）用的
 ```
 
-兩個各自獨立，只放一個就只蓋那一個。檔案是空的會退回內建，不會送出空 prompt。
+兩套各自獨立，放哪個就蓋哪個。如果是空檔會退回預設，不送出空內容。
 
-內建那兩套刻意不指定輸出語言，只寫「用跟原文相同的語言回答」——所以你的 CC 講英文就回英文、講中文就回中文。要固定語言就在自己的 prompt 裡寫死。
+內建 prompt 沒限定語言，只要求「用跟原文相同的語言回答」。CC 說英文就回英文，說中文就回中文。想綁死語言，在自訂 prompt 裡寫明就行。
 
-`~/.claude/glossary.md` 存在的話會附在 prompt 後面當個人語彙表，讓重講沿用你自己的說法。但只在要重講的內容比語彙表長的時候才附。短 turn 配上長語彙表，模型看到的幾乎全是詞彙，會答非所問（實測過一次：2,722 字的 payload 裡語彙表佔 2,050 字，模型回「你提供的內容缺少需要重講的技術說明」）。
+有 `~/.claude/glossary.md` 的話會接在後面當術語表，讓模型講你的黑話。不過重講內容如果比術語表短就不會帶。內容太短卻塞一整串名詞，模型會搞錯焦點直接回歪。實測 2,722 字的 payload 裡塞了 2,050 字術語表，模型直接回「你提供的內容缺少需要重講的技術說明」。
 
 ## 終端機樣式
 
-模型回的是 markdown，直接印在終端機上會看到一堆 `**`、反引號和 ``` 圍欄。
+模型吐的是 markdown，直接丟終端機會看到整片的 `**`、反引號和代碼圍欄。
 
-有 [rich](https://github.com/Textualize/rich) 就用 rich（`Markdown` 加 `soft_wrap=True`），它會真的排版表格、算對中文寬度、給程式碼區塊上底色。`soft_wrap` 不能省——沒有它，rich 會用英文的空白斷詞邏輯重排，把 `2*3*4` 從中間切成兩行。
+裝了 [rich](https://github.com/Textualize/rich) 就優先用 rich（帶 `Markdown` 與 `soft_wrap=True`）。它能正確畫出表格、算對中文字寬、給代碼區塊上底色。`soft_wrap` 一定要開，不然 rich 會拿英文邏輯斷行，把 `2*3*4` 拆成兩截。
 
-沒有 rich 就退回內建的 `basic()`，五十行，夠用但不排表格：
+沒裝 rich 就換內建的 `basic()`。五十行代碼，能讀但不管表格排版：
 
 | markdown | rich | 內建 fallback |
 |---|---|---|
@@ -156,34 +156,34 @@ SIDECAR_API_KEY=...          # http 那條的 key；不給也不報錯，只是�
 | ` ```區塊``` ` | 底色框 | 縮排變暗 |
 | `> 引用` | `▌` 帶底色 | `│ ` |
 
-保留 fallback 是因為 rich 是選用的：這個 repo 不釘任何套件，rich 可能只是被別的東西當作相依裝進來，哪天就消失了。要確保有它就 `pip install rich`。
+保留這套陽春 fallback 是因為不想綁套件。rich 可能是別的工具順手裝進來的，隨時會不見。想穩定用就 `pip install rich`。
 
-**輸出不是終端機時自動關掉**，所以 `ww 1 > out.md` 或 pipe 給別的工具拿到的是乾淨的原始 markdown。`--raw` 強制關閉，`NO_COLOR=1` 也認。
+**只要輸出不是 terminal 就會自動關閉樣式**。像 `ww 1 > out.md` 或 pipe 給其他指令，拿到的都是乾淨的 markdown。加 `--raw` 會強制關掉，也支援 `NO_COLOR=1`。
 
 ## 快取
 
-存在 `~/.cache/cc-sidecar-waitwhat.json`（`SIDECAR_CACHE` 可改）。key 是來源 + system prompt + 完整 payload 的 SHA-256，每條來源的答案各佔一格。`auto` 模式查快取時每格都試，命中哪格就標哪個來源。
+快取寫在 `~/.cache/cc-sidecar-waitwhat.json`（可用 `SIDECAR_CACHE` 改）。key 拿來源、system prompt 和完整 payload 算 SHA-256，不同來源的回答分開存。`auto` 模式會把每格都查一遍，對上哪個就標哪個來源。
 
-實測同一條指令連跑兩次：**12.09 秒 → 0.877 秒**。
+同一條指令連敲兩次的實測：**12.09 秒 → 0.877 秒**。
 
-但命中率沒有想像中高：只要那支 CC session 多寫了一則訊息，payload 就變了，一定落空。真正會命中的是「那一輪已經結束、你回頭再看一次」。CC 還在跑的時候重複打 `ww 1`，每次都是新的請求——這是刻意的，寧可重問也不給你過期的重講。
+命中率其實不高。只要 CC session 多跳一句話，payload 不同就直接 miss。會命中的情況，多半是那一輪聊完了你回頭重看。CC 還在跑時連敲 `ww 1` 都會重問，寧可重新算也不給你舊答案。
 
 ```bash
 ww --cache-stats   # 看有幾筆、各是什麼模式
 ww 1 --no-cache    # 強制重問一次
 ```
 
-超過 200 筆會丟掉最舊的。檔案壞掉時當空的處理，不會炸。
+紀錄超過 200 筆會自動刪掉最舊的。快取檔壞了就當作空的，不會崩潰。
 
 ## 已知限制
 
-- **重講可能引入錯誤**。實測有一次把 `poll_interval` 的 2.0 秒講成 0.2 秒——紀錄裡兩個數字都出現過，模型挑錯邊。重講是二手資料，拿它定位、不要拿它當事實。
-- **依賴 CC 的 session schema**（目前 2.1.270）。CC 改版可能動 `origin.kind` / `isSidechain` 這些欄位。壞掉的方向是沒輸出，不是靜默給錯答案。
-- **`herdr agent read` 讀不到對話**。畫面底部只有輸入框和 statusline，對話早捲上去了，所以走 JSONL 而不是讀畫面。
-- **CC 還在跑的時候重講，拿到的是半截**。`-l` 的狀態欄會標「還在跑」還是「等你回」；直接跑 `ww` 而對象還在跑時會先印一行警告。
-- `ps` 與 `lsof` 用來過濾已關閉的 session。缺了不會壞，那一步會直接跳過，只是清單裡會多出已經關掉的對話。
+- **重講可能出錯**。實測曾把 `poll_interval` 的 2.0 秒寫成 0.2 秒。上下文兩個數字都有，模型猜錯了。重講是二手摘要，拿來抓方向就好，不要當絕對事實。
+- **依賴 CC 目前的 session 結構**（版號 2.1.270）。改版如果動到 `origin.kind` 或 `isSidechain`，腳本會抓不到東西，但不會默默吐錯話。
+- **`herdr agent read` 拿不到對話**。畫面下方只有輸入列和狀態列，文字早捲上去了，所以直接看 JSONL。
+- **CC 還在動就下指令，只會拿到半截**。`-l` 裡會標「還在跑」還是「等你回」。如果對象正在動，`ww` 會先跳警訊。
+- 沒 `ps` 和 `lsof` 也能跑。過濾無效 session 的步驟會直接跳過，清單裡會多出幾個關掉的對話。
 
-開發於 Python 3.14，只用標準庫，最舊用到的 API 是 `subprocess.run(capture_output=...)`（3.7），但 3.7 到 3.13 之間都沒有實測過。
+在 Python 3.14 下寫的，只碰標準庫。最舊只依賴 3.7 的 `subprocess.run(capture_output=...)`，但 3.7 到 3.13 之間沒逐一測過。
 
 ## 測試
 
@@ -191,4 +191,4 @@ ww 1 --no-cache    # 強制重問一次
 python3 -m unittest discover -s tests
 ```
 
-59 個，覆蓋解析層、找 session、prompt 覆寫、快取、終端機渲染與來源路由（其中 2 個在沒裝 rich 的環境會 skip）。`cmd` 那條用 `cat` / `head` / `false` 當假 LLM 測，`from_files` 用 fixture JSONL 測，都不需要真的模型或 herdr。herdr 那條依賴外部狀態，沒有自動化測試——驗證方式是實跑 `ww -l` 看它有沒有回出帶狀態的清單。
+共有 59 個測試，覆蓋解析邏輯、尋找 session、prompt 覆寫、快取、渲染與來源路由（沒 rich 的環境會 skip 掉 2 個）。`cmd` 測項拿 `cat`、`head`、`false` 模擬 LLM，`from_files` 用 fixture JSONL，不用開模型也不用裝 herdr。herdr 依賴外在環境，沒有自動化測試，直接執行 `ww -l` 看有沒有列出狀態就好。
