@@ -2,7 +2,7 @@ import os
 import pathlib
 
 PROMPT_DIR = pathlib.Path(os.environ.get(
-    "SIDECAR_PROMPT_DIR", pathlib.Path.home() / ".config" / "cc-waitwhat"))
+    "SIDECAR_PROMPT_DIR", pathlib.Path.home() / ".config" / "cc-sidecar-waitwhat"))
 
 DEFAULT_WAIT_WHAT = """使用者跟丟了。你在讀一段對話紀錄，要重講一次讓他跟回來。
 

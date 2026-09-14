@@ -1,4 +1,4 @@
-# cc-waitwhat
+# cc-sidecar-waitwhat
 
 在 Claude Code 之外重講它剛剛說的話。CC 不知道你用過這個工具。
 
@@ -129,11 +129,11 @@ SIDECAR_API_KEY=...          # http 那條的 key；不給也不報錯，只是�
 
 內建的兩套是**起點，不是成品**。重講的品質幾乎全部由 prompt 決定，而什麼叫「講清楚」每個人的標準不一樣——所以這裡預期你會改。
 
-把檔案放進 `~/.config/cc-waitwhat/`（`SIDECAR_PROMPT_DIR` 可改位置）就會蓋掉內建的：
+把檔案放進 `~/.config/cc-sidecar-waitwhat/`（`SIDECAR_PROMPT_DIR` 可改位置）就會蓋掉內建的：
 
 ```
-~/.config/cc-waitwhat/wait-what.md    ← ww（整段脈絡）用的
-~/.config/cc-waitwhat/plain.md        ← ww N（白話重講）用的
+~/.config/cc-sidecar-waitwhat/wait-what.md    ← ww（整段脈絡）用的
+~/.config/cc-sidecar-waitwhat/plain.md        ← ww N（白話重講）用的
 ```
 
 兩個各自獨立，只放一個就只蓋那一個。檔案是空的會退回內建，不會送出空 prompt。
@@ -164,7 +164,7 @@ SIDECAR_API_KEY=...          # http 那條的 key；不給也不報錯，只是�
 
 ## 快取
 
-存在 `~/.cache/cc-waitwhat.json`（`SIDECAR_CACHE` 可改）。key 是來源 + system prompt + 完整 payload 的 SHA-256，每條來源的答案各佔一格。`auto` 模式查快取時每格都試，命中哪格就標哪個來源。
+存在 `~/.cache/cc-sidecar-waitwhat.json`（`SIDECAR_CACHE` 可改）。key 是來源 + system prompt + 完整 payload 的 SHA-256，每條來源的答案各佔一格。`auto` 模式查快取時每格都試，命中哪格就標哪個來源。
 
 實測同一條指令連跑兩次：**12.09 秒 → 0.877 秒**。
 
