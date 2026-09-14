@@ -66,10 +66,10 @@
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="main" data-start="0" data-duration="22"
+    <div id="root" data-composition-id="main" data-start="0" data-duration="25"
          data-width="1920" data-height="1080">
 
-      <div id="stage" class="clip" data-start="0" data-duration="22">
+      <div id="stage" class="clip" data-start="0" data-duration="25">
         <div id="cc" class="term" data-layout-allow-occlusion data-layout-allow-overlap>
           <div class="term-bar">
             <span class="dot" style="background:#2d3642"></span>
@@ -128,8 +128,8 @@
         <div class="mid">問了，它會以為那段很重要。</div>
       </div>
 
-      <div id="endScrim" class="scrim clip" data-start="19.6" data-duration="2.4" style="opacity:0"></div>
-      <div id="outro" class="overlay clip" data-start="19.8" data-duration="2.2"
+      <div id="endScrim" class="scrim clip" data-start="19.6" data-duration="5.4" style="opacity:0"></div>
+      <div id="outro" class="overlay clip" data-start="19.8" data-duration="5.2"
            style="top: 400px; opacity: 0; z-index: 22">
         <div class="big" id="outroL1">session 外請它重講</div>
         <div class="big" id="outroL2" style="margin-top: 18px">不要污染 context</div>
@@ -175,8 +175,8 @@
       tl.to("#endScrim", { opacity: 1, duration: 0.6 }, 19.7);
       tl.fromTo("#outro", { opacity: 0 }, { opacity: 1, duration: 0.01 }, 19.95);
       tl.fromTo("#outroL1", { opacity: 0 }, { opacity: 1, duration: 0.45 }, 20.0);
-      tl.fromTo("#outroL2", { opacity: 0 }, { opacity: 1, duration: 0.45 }, 20.65);
-      tl.fromTo("#outroName", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 21.3);
+      tl.fromTo("#outroL2", { opacity: 0 }, { opacity: 1, duration: 0.45 }, 20.9);
+      tl.fromTo("#outroName", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 21.8);
 
       window.__timelines["main"] = tl;
     </script>

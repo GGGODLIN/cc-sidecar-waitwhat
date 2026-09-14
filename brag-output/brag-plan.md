@@ -50,7 +50,7 @@ entry → key action → result，三拍都是真的：
 - Interpretation: 長停頓、大量留白、一次只給一行字。不要配快節奏音樂、不要塞三張功能卡。笑點是整支片子從頭到尾沒有笑——包括那個偏執的動機被當成理所當然講出來。
 
 ## Format: landscape — 1920x1080
-## Duration: 20 秒
+## Duration: 25 秒
 
 ## Visual identity (from the project)
 
@@ -122,15 +122,15 @@ Audio-coupled idea: 滑回的乾聲
 Music: 淡出
 Transition mood: 慢淡 → Scene 6
 
-### Scene 6 — 落款 — 2s
-「session 外請它重講」先出現，0.65s 後「不要污染 context」接上（較暗），再 0.65s 後小字 `cc-sidecar-waitwhat`。三段依序、不同明度，讀起來是做法→理由→名字。音樂已經全無。
+### Scene 6 — 落款 — 5.2s
+「session 外請它重講」先出現，0.65s 後「不要污染 context」接上（較暗），再 0.9s 後小字 `cc-sidecar-waitwhat`。三段依序、不同明度，讀起來是做法→理由→名字。**全部出現後靜止 2.8 秒**——第一版只留 0.3 秒，實測根本來不及讀完（使用者回饋「結束得太快」）。brag 的 readable 法則是「一句話約 0.3s 一個詞、最少 1.2s，而且要 settled 之後才開始算」，0.3 秒連一行都不夠。音樂已經全無。
 Sequential/interaction: none
 Audio intent: 完全靜音收尾
 Audio-coupled idea: none
 Music: none
 Transition mood: 直接結束
 
-**總長：4.5 + 4.6 + 4.5 + 5 + 2 + 2 = 22.6 秒**（實際 render 22.0 秒）
+**總長：4.5 + 4.6 + 4.5 + 5 + 2 + 5.2 = 25.8 秒**（實際 render 25.0 秒，踩在 brag 15–25 秒的上限）
 
 **Music mood for this video:** deadpan（近乎無聲，只有低頻 bed 撐住中段）
 **Audio summary:** 從完全沉默開始，退格那四下是唯一的音量高點，低頻 bed 在中段撐著，最後兩秒回到完全沉默——聲音的弧線跟「什麼都沒發生」這個結論一致。
