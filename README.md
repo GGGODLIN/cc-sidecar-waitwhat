@@ -4,6 +4,8 @@
 
 *[English](README.en.md)*
 
+![cc-sidecar-waitwhat demo](screenshots/demo.gif)
+
 | 指令 | 做什麼 | 送什麼給模型 | 實測 |
 |---|---|---|---|
 | `ww` | 跟丟了，重講整段脈絡 | 整個 session 的對話與工具紀錄 | 68,171 字 → 864 token，19.6 秒 |

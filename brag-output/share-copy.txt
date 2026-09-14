@@ -1,0 +1,3 @@
+我做了 cc-sidecar-waitwhat。
+
+跟丟 Claude Code 在講什麼的時候，不要問它——那段會留在它的 context 裡，而且會讓它以為那段很重要。所以這個 CLI 在旁邊另開一個模型重講一次，CC 的 session 紀錄裡一個字都沒有。

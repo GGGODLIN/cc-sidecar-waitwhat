@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-Hant" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        margin: 0; width: 1920px; height: 1080px;
+        overflow: hidden; background: #05070a;
+      }
+      body {
+        font-family: ui-monospace, "SF Mono", Menlo, "DejaVu Sans Mono", monospace;
+        -webkit-font-smoothing: antialiased;
+      }
+      .clip { position: absolute; inset: 0; }
+
+      .term {
+        position: absolute; border-radius: 14px; overflow: hidden;
+        background: #0d1117; border: 1px solid #1c2430;
+        box-shadow: 0 30px 90px rgba(0,0,0,0.65);
+      }
+      .term-bar {
+        height: 44px; background: #131a24; display: flex;
+        align-items: center; padding: 0 18px; gap: 9px;
+        border-bottom: 1px solid #1c2430;
+      }
+      .dot { width: 13px; height: 13px; border-radius: 50%; }
+      .term-title {
+        margin-left: 16px; font-size: 19px; color: #7a828d; letter-spacing: .4px;
+      }
+      .term-body { padding: 30px 36px; font-size: 25px; line-height: 1.62; color: #c9d1d9; }
+
+      .cyan  { color: #2aa198; }
+      .amber { color: #b58900; }
+      .dim   { color: #7a828d; }
+      .bold  { font-weight: 700; color: #e6edf3; }
+
+      #cc { left: 190px; top: 150px; width: 1540px; height: 780px; }
+      #quick {
+        left: 190px; top: 150px; width: 1540px; height: 356px;
+        z-index: 5; border-color: #2b3a4a;
+      }
+
+      .prompt-row { display: flex; align-items: center; margin-top: 22px; font-size: 25px; }
+      .caret {
+        display: inline-block; width: 13px; height: 27px;
+        background: #2aa198; margin-left: 3px; vertical-align: -4px;
+      }
+
+      .overlay {
+        position: absolute; left: 0; right: 0; display: flex;
+        flex-direction: column; align-items: center; z-index: 20;
+      }
+      .big {
+        font-size: 78px; font-weight: 700; color: #e6edf3; letter-spacing: 2px;
+      }
+      .sub { margin-top: 26px; font-size: 30px; color: #7a828d; letter-spacing: 3px; }
+      .scrim {
+        position: absolute; inset: 0; background: #05070a; z-index: 15;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="22"
+         data-width="1920" data-height="1080">
+
+      <div id="stage" class="clip" data-start="0" data-duration="22">
+        <div id="cc" class="term" data-layout-allow-occlusion data-layout-allow-overlap>
+          <div class="term-bar">
+            <span class="dot" style="background:#2d3642"></span>
+            <span class="dot" style="background:#2d3642"></span>
+            <span class="dot" style="background:#2d3642"></span>
+            <span class="term-title" data-layout-allow-overlap>Claude Code — cc-sidecar-waitwhat</span>
+          </div>
+          <div class="term-body">
+            <div id="ccLines">
+              <div class="ccline" data-layout-allow-overlap>但「不留痕」只對目標 <span class="cyan" data-layout-allow-overlap>session</span> 成立，不對整棵</div>
+              <div class="ccline" data-layout-allow-overlap><span class="cyan" data-layout-allow-overlap>~/.claude</span> 樹成立：<span class="cyan" data-layout-allow-overlap>claude -p</span> 預設會在 cwd 對應的目錄下</div>
+              <div class="ccline" data-layout-allow-overlap>另開一支 session 檔（實測 300–500KB，大部分是 hook</div>
+              <div class="ccline" data-layout-allow-overlap>與 MCP 的載入紀錄），所以預設指令帶了</div>
+              <div class="ccline" data-layout-allow-overlap><span class="cyan" data-layout-allow-overlap>--no-session-persistence</span>。那些檔即使產生了也不會</div>
+              <div class="ccline" data-layout-allow-overlap>混進 <span class="cyan" data-layout-allow-overlap>ww -l</span>——headless 模式寫的 user 紀錄沒有</div>
+              <div class="ccline" data-layout-allow-overlap><span class="cyan" data-layout-allow-overlap>origin.kind</span>，<span class="cyan" data-layout-allow-overlap>is_human</span> 會排除。</div>
+            </div>
+            <div class="prompt-row">
+              <span class="cyan" data-layout-allow-overlap>&gt;</span>&nbsp;<span id="typed" data-layout-allow-overlap></span><span class="caret" id="caret"></span>
+            </div>
+          </div>
+        </div>
+
+        <div id="quick" class="term" data-layout-allow-occlusion data-layout-allow-overlap>
+          <div class="term-bar">
+            <span class="dot" style="background:#2d3642"></span>
+            <span class="dot" style="background:#2d3642"></span>
+            <span class="dot" style="background:#2d3642"></span>
+            <span class="term-title" data-layout-allow-overlap>quick terminal</span>
+          </div>
+          <div class="term-body">
+            <div class="prompt-row" style="margin-top:0">
+              <span class="cyan" data-layout-allow-overlap>❯</span>&nbsp;<span id="cmd" data-layout-allow-overlap></span><span class="caret" id="caret2"></span>
+            </div>
+            <div id="receiptTop" data-layout-allow-overlap class="dim" style="margin-top:26px; opacity:0; font-size:22px">
+              ── 白話：cc-sidecar-waitwhat　(de0e89f8，送出 2,315 字 → cmd:claude -p)
+            </div>
+            <div id="answer" data-layout-allow-overlap style="margin-top:18px; opacity:0">
+              這個工具在 Claude Code 外面重講它剛說的話。<br />
+              重講不進它的 <span class="cyan" data-layout-allow-overlap>context</span>，session 檔裡也不留紀錄。
+            </div>
+            <div id="receiptBot" data-layout-allow-overlap class="dim" style="margin-top:18px; opacity:0; font-size:22px">
+              ── 10.9s　來源 cmd:claude -p
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="hook" class="overlay clip" data-start="0" data-duration="4.5"
+           style="top: 470px; opacity: 0">
+        <div class="big">看不懂。</div>
+      </div>
+
+      <div id="endScrim" class="scrim clip" data-start="19.6" data-duration="2.4" style="opacity:0"></div>
+      <div id="outro" class="overlay clip" data-start="19.8" data-duration="2.2"
+           style="top: 450px; opacity: 0; z-index: 22">
+        <div class="big">它不知道你剛剛沒聽懂。</div>
+        <div class="sub" id="outroName">cc-sidecar-waitwhat</div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      const type = (target, text, start, perChar) => {
+        for (let i = 1; i <= text.length; i += 1) {
+          tl.set(target, { textContent: text.slice(0, i) }, start + i * perChar);
+        }
+      };
+      const erase = (target, text, start, perChar) => {
+        for (let i = text.length - 1; i >= 0; i -= 1) {
+          tl.set(target, { textContent: text.slice(0, i) }, start + (text.length - i) * perChar);
+        }
+      };
+
+      tl.set("#quick", { y: -530 }, 0);
+      tl.to("#caret", { opacity: 0, duration: 0.001, repeat: 42, yoyo: true, repeatDelay: 0.5 }, 0);
+
+      tl.fromTo("#ccLines", { y: 46 }, { y: 0, duration: 0.5, ease: "power2.out" }, 0);
+      tl.fromTo("#hook", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5 }, 2.0);
+      tl.to("#hook", { opacity: 0, duration: 0.4 }, 4.1);
+
+      type("#typed", "這什麼意思", 4.8, 0.25);
+      erase("#typed", "這什麼意思", 6.9, 0.16);
+
+      tl.to("#quick", { y: 0, duration: 0.42, ease: "power3.out" }, 8.6);
+      type("#cmd", "ww 1", 9.3, 0.16);
+
+      tl.to("#receiptTop", { opacity: 1, duration: 0.28 }, 13.0);
+      tl.to("#answer", { opacity: 1, duration: 0.35 }, 13.6);
+      tl.to("#receiptBot", { opacity: 1, duration: 0.28 }, 14.4);
+
+      tl.to("#quick", { y: -530, duration: 0.42, ease: "power2.in" }, 18.1);
+      tl.to("#endScrim", { opacity: 1, duration: 0.6 }, 19.7);
+      tl.fromTo("#outro", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 20.0);
+      tl.fromTo("#outroName", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 21.0);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

@@ -4,6 +4,8 @@ Replay what Claude Code just said, from outside the session. CC never finds out 
 
 *[中文版](README.md)*
 
+![cc-sidecar-waitwhat demo](screenshots/demo.gif)
+
 | Command | What it does | What it sends | Measured |
 |---|---|---|---|
 | `ww` | You lost the thread — replay the whole session | Every turn plus the tool calls | 68,171 chars → 864 tokens, 19.6s |
