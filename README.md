@@ -2,6 +2,8 @@
 
 在 Claude Code 之外重講它剛剛說的話。CC 不知道你用過這個工具。
 
+*[English](README.en.md)*
+
 | 指令 | 做什麼 | 送什麼給模型 | 實測 |
 |---|---|---|---|
 | `ww` | 跟丟了，重講整段脈絡 | 整個 session 的對話與工具紀錄 | 68,171 字 → 864 token，19.6 秒 |
@@ -10,18 +12,18 @@
 
 數字是**往回幾個 turn**，不是選 session——選 session 用 `-s`。一個 turn 是「你問一次 + CC 那一輪的所有回應」，中間穿插的工具呼叫不會把它切開。
 
-`ww` = wait what。兩套 system prompt：不帶數字用「跟丟了」那套（補前提、從頭敘事），帶數字用「白話」那套（大幅砍、給一個建議而不是列選項）。**兩套都可以換成你自己的**，見下面〈換掉 prompt〉。
+`ww` = wait what。兩套 system prompt：不帶數字用「跟丟了」那套（補前提、從頭敘事），帶數字用「白話」那套（大幅砍、給一個建議而不是列選項）。兩套都可以換成你自己的。
 
 ## 為什麼要跑在 CC 外面
 
-在 CC 裡打 `/wait-what` 有四個代價。sidecar **不是四個都消掉**：
+在 CC 裡打 `/wait-what` 有四個代價。sidecar 不是四個都消掉：
 
 | 代價 | 預設路徑（`claude -p`）| 換一家模型 |
 |---|---|---|
-| 1. 重講輸出留在 context 裡，之後每輪都帶著 | **消掉** | 消掉 |
-| 2. 重講的人是 CC 自己，帶著同一個盲點 | **消一半**——另一個 process、乾淨的對話脈絡，但同一家模型、同一份 CLAUDE.md 與 memory | 消掉 |
-| 3. 「請你重講」這個動作本身扭曲後續推理 | **消掉** | 消掉 |
-| 4. 花 token | **沒消**，只是從 CC 的 context 搬到另一次呼叫，還多付一整套 harness 的 system context | 消掉（改花別家的）|
+| 1. 重講輸出留在 context 裡，之後每輪都帶著 | 消掉 | 消掉 |
+| 2. 重講的人是 CC 自己，帶著同一個盲點 | 消一半。另一個 process、乾淨的對話脈絡，但同一家模型、同一份 CLAUDE.md 與 memory | 消掉 |
+| 3. 「請你重講」這個動作本身扭曲後續推理 | 消掉 | 消掉 |
+| 4. 花 token | 沒消，只是從 CC 的 context 搬到另一次呼叫，還多付一整套 harness 的 system context | 消掉（改花別家的）|
 
 真正的保證只有一條：**目標 session 的 JSONL 裡不會出現任何這次重講的痕跡**。那個檔是 CC 單向寫出去的，外面讀不留痕。所以在 CC 裡打的東西一律不合格，`!` 前綴跑 shell 也一樣。
 
@@ -54,11 +56,11 @@ ln -sf "$PWD/bin/ww" ~/.local/bin/ww
 
 ### 在哪叫出來
 
-**唯一的要求是：那個 shell 不能是你跑 CC 的那個。** 在 CC 裡打 `!` 跑 shell 一樣不合格，那個輸出會進它的 context。
+唯一的要求是那個 shell 不能是你跑 CC 的那個。 在 CC 裡打 `!` 跑 shell 一樣不合格，那個輸出會進它的 context。
 
 | 你的終端機 | 做法 |
 |---|---|
-| Ghostty | 下拉終端機，見下 |
+| Ghostty | 下拉終端機 |
 | iTerm2 | Preferences → Profiles → Keys → 設一個 Hotkey Window |
 | tmux | `bind-key w split-window -h 'ww 1; read'` 或直接開一個常駐 pane |
 | kitty | `map cmd+shift+w launch --type=os-window ww 1` |
@@ -85,7 +87,7 @@ quick-terminal-screen = macos-menu-bar
 | `cmd` | 一個 shell 指令，prompt 從 stdin 進、答案從 stdout 出 | 34.2 秒（`claude -p --model sonnet`）／ 14.9 秒（自製的 wrapper）|
 | `http` | 任何吃 OpenAI 格式 `/v1/chat/completions` 的端點 | 8.8 秒（本機 proxy → Gemini Flash）|
 
-**零設定的預設是 `cmd`**：`SIDECAR_CMD` 沒設的話，PATH 裡有 `claude` 就自動用 `claude -p --no-session-persistence`。這個工具的使用者按定義都有它。代價是慢——CLI 啟動開銷加上去大概是 HTTP 那條的三到四倍。
+零設定的預設是 `cmd`：`SIDECAR_CMD` 沒設的話，PATH 裡有 `claude` 就自動用 `claude -p --no-session-persistence`。這個工具的使用者按定義都有它。代價是慢，CLI 啟動開銷加上去大概是 HTTP 那條的三到四倍。
 
 想快一點就指定模型或換工具：
 
@@ -95,8 +97,6 @@ SIDECAR_CMD='ollama run llama3'
 SIDECAR_CMD='llm -m gpt-4o'
 SIDECAR_CMD='my-own-wrapper'          # 自己寫一支讀 stdin 印 stdout 的就能接
 ```
-
-最後那行是這個設計的重點：**要接什麼模型不必改這個 repo**。寫一支讀 stdin、印 stdout、失敗回非零的指令就行，`ww` 不需要知道它在做什麼。
 
 指令用 shell 的拆詞規則切開（`shlex`），但**不經過 shell**，所以 pipe 和重導向不會生效。
 
@@ -108,8 +108,6 @@ SIDECAR_CMD='my-own-wrapper'          # 自己寫一支讀 stdin 印 stdout 的�
 ── 11.4s  來源 http:gemini-3.8-flash-high  ← 退回原因：沒有設 SIDECAR_CMD，PATH 裡也沒有 claude
 ── 白話：View A  (快取命中 · 來源 cmd:claude -p)
 ```
-
-送出前那行會先寫出**打算**用哪條，最後一行寫**實際**用了哪條。兩者不同就是中途退回了，退回原因會接在後面。
 
 指定單一來源時是**嚴格模式**——`--source cmd` 失敗就 exit 1，不會偷偷換別條。
 
@@ -123,11 +121,9 @@ SIDECAR_MODEL=...            # http 那條的模型
 SIDECAR_API_KEY=...          # http 那條的 key；不給也不報錯，只是不送 Authorization（ollama / LM Studio 這類不需要 key）
 ```
 
-輸入是本機 JSONL、輸出是純文字，中間那顆模型是純粹的可替換件。
-
 ## 換掉 prompt
 
-內建的兩套是**起點，不是成品**。重講的品質幾乎全部由 prompt 決定，而什麼叫「講清楚」每個人的標準不一樣——所以這裡預期你會改。
+內建的兩套是起點，不是成品。重講的品質幾乎全部由 prompt 決定，而什麼叫「講清楚」每個人的標準不一樣，所以這裡預期你會改。
 
 把檔案放進 `~/.config/cc-sidecar-waitwhat/`（`SIDECAR_PROMPT_DIR` 可改位置）就會蓋掉內建的：
 
@@ -138,15 +134,15 @@ SIDECAR_API_KEY=...          # http 那條的 key；不給也不報錯，只是�
 
 兩個各自獨立，只放一個就只蓋那一個。檔案是空的會退回內建，不會送出空 prompt。
 
-內建那兩套**刻意不指定輸出語言**，只寫「用跟原文相同的語言回答」——所以你的 CC 講英文就回英文、講中文就回中文。要固定語言就在自己的 prompt 裡寫死。
+內建那兩套刻意不指定輸出語言，只寫「用跟原文相同的語言回答」——所以你的 CC 講英文就回英文、講中文就回中文。要固定語言就在自己的 prompt 裡寫死。
 
-`~/.claude/glossary.md` 存在的話會附在 prompt 後面當個人語彙表，讓重講沿用你自己的說法。但**只在要重講的內容比語彙表長的時候才附**——短 turn 配上長語彙表，模型看到的幾乎全是詞彙，會答非所問（實測過一次：2,722 字的 payload 裡語彙表佔 2,050 字，模型回「你提供的內容缺少需要重講的技術說明」）。
+`~/.claude/glossary.md` 存在的話會附在 prompt 後面當個人語彙表，讓重講沿用你自己的說法。但只在要重講的內容比語彙表長的時候才附。短 turn 配上長語彙表，模型看到的幾乎全是詞彙，會答非所問（實測過一次：2,722 字的 payload 裡語彙表佔 2,050 字，模型回「你提供的內容缺少需要重講的技術說明」）。
 
 ## 終端機樣式
 
 模型回的是 markdown，直接印在終端機上會看到一堆 `**`、反引號和 ``` 圍欄。
 
-**有 [rich](https://github.com/Textualize/rich) 就用 rich**（`Markdown` 加 `soft_wrap=True`），它會真的排版表格、算對中文寬度、給程式碼區塊上底色。`soft_wrap` 不能省——沒有它，rich 會用英文的空白斷詞邏輯重排，把 `2*3*4` 從中間切成兩行。
+有 [rich](https://github.com/Textualize/rich) 就用 rich（`Markdown` 加 `soft_wrap=True`），它會真的排版表格、算對中文寬度、給程式碼區塊上底色。`soft_wrap` 不能省——沒有它，rich 會用英文的空白斷詞邏輯重排，把 `2*3*4` 從中間切成兩行。
 
 沒有 rich 就退回內建的 `basic()`，五十行，夠用但不排表格：
 
@@ -168,7 +164,7 @@ SIDECAR_API_KEY=...          # http 那條的 key；不給也不報錯，只是�
 
 實測同一條指令連跑兩次：**12.09 秒 → 0.877 秒**。
 
-**但命中率沒有想像中高**：只要那支 CC session 多寫了一則訊息，payload 就變了，一定落空。真正會命中的是「那一輪已經結束、你回頭再看一次」。CC 還在跑的時候重複打 `ww 1`，每次都是新的請求——這是刻意的，寧可重問也不給你過期的重講。
+但命中率沒有想像中高：只要那支 CC session 多寫了一則訊息，payload 就變了，一定落空。真正會命中的是「那一輪已經結束、你回頭再看一次」。CC 還在跑的時候重複打 `ww 1`，每次都是新的請求——這是刻意的，寧可重問也不給你過期的重講。
 
 ```bash
 ww --cache-stats   # 看有幾筆、各是什麼模式
