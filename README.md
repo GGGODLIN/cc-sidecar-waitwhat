@@ -27,6 +27,8 @@
 | 3. 「請你重講」這個動作本身扭曲後續推理 | 消掉 | 消掉 |
 | 4. 花 token | 沒消，只是從 CC 的 context 搬到另一次呼叫，還多付一整套 harness 的 system context | 消掉（改花別家的）|
 
+如果你不介意 CC 這個殼知道你按過按鈕、只要模型看不到重講內容，[cc-mod-waitwhat](https://github.com/GGGODLIN/cc-mod-waitwhat) 是跑在 CC 裡面的 Claude Mods 版：按鈕畫在提示框上方，不用切終端機、不用選 session，同一組環境變數與 prompt 覆寫檔。
+
 這裡的核心保證只有一個：**目標 session 的 JSONL 裡完全不會留下重講痕跡**。CC 單向寫檔，外部工具只讀不寫。只要在 CC 裡敲指令，就算加 `!` 跑 shell 都不行，全都會寫進去。
 
 **但「不留痕跡」只限目標 session，不保證整棵 `~/.claude` 都乾淨**：`claude -p` 預設會在工作目錄開一個新的 session 檔（實測 300–500KB，多半在記載入 hook 與 MCP 的過程），因此預設指令加了 `--no-session-persistence`。即便產生了這些檔案，也不會出現在 `ww -l` 裡。headless 寫入的紀錄沒有 `origin.kind`，`is_human` 會直接過濾掉。

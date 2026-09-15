@@ -27,6 +27,8 @@ Asking in the session costs you four things. This tool removes two of them:
 
 Cost 3 is the one people miss. Ask a model to re-explain a passage and you've told it that passage matters; the next several turns lean toward it. That's not about explaining well or badly — observing changed the thing observed.
 
+If you only need the model kept in the dark, and don't mind CC's own UI knowing you pressed a button, [cc-mod-waitwhat](https://github.com/GGGODLIN/cc-mod-waitwhat) is the Claude Mods version that runs inside CC: buttons above the prompt, no second terminal, no session picking, same environment variables and prompt overrides.
+
 One guarantee holds: **nothing about the replay reaches the target session's JSONL**. That file is written one way, and reading it from outside leaves no trace. Which also means anything typed inside CC fails the bar, including `!` shell escapes.
 
 The guarantee covers the target session, not all of `~/.claude`. `claude -p` opens its own session file under the cwd it ran in — 300–500KB, mostly hook and MCP loading records — so the default command passes `--no-session-persistence`. Those files never reach `ww -l` anyway: headless mode writes user records without `origin.kind`, and `is_human` drops them.
