@@ -9,8 +9,14 @@ PATH = pathlib.Path(os.environ.get(
 LIMIT = 200
 
 
-def key_for(model, system, payload):
-    return hashlib.sha256("\0".join([model, system, payload]).encode()).hexdigest()
+def shared_key_for(mode, messages):
+    normalized = []
+    for role, text in messages:
+        content = text.replace("\r\n", "\n").replace("\r", "\n").strip(" \t\n\r")
+        if content:
+            normalized.append([role, content])
+    payload = json.dumps([mode, normalized], ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(payload.encode()).hexdigest()
 
 
 def load(path=None):

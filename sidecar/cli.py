@@ -34,11 +34,21 @@ def render_turn(group):
     return "\n\n".join(lines)
 
 
+def cache_messages(groups):
+    messages = []
+    for group in groups:
+        if group["prompt"]:
+            messages.append(("user", group["prompt"]))
+        messages.extend(("assistant", reply) for reply in group["replies"])
+    return messages
+
+
 def build_full(row, tail=None):
     meta, turns, tools = parse.transcript(row["path"], tail)
     if not turns:
-        return None
-    body = "\n\n".join(render_turn(group) for group in parse.split_turns(turns))
+        return None, []
+    groups = parse.split_turns(turns)
+    body = "\n\n".join(render_turn(group) for group in groups)
     blocks = [f"# 這個 session 的基本資料\n"
               f"視窗標題：{row['title']}\n"
               f"工作目錄：{meta.get('cwd')}\n"
@@ -51,13 +61,13 @@ def build_full(row, tail=None):
         blocks.append(f"# 這個 session 做過的事（工具呼叫 {len(tools)} 次，去重後取最近 60 筆）\n"
                       + "\n".join("- " + item for item in unique[-60:]))
     blocks.append("# 對話紀錄\n" + body)
-    return "\n\n---\n\n".join(blocks)
+    return "\n\n---\n\n".join(blocks), cache_messages(groups)
 
 
 def build_recent(row, count):
     groups = parse.recent_turns(row["path"], count)
     if not groups:
-        return None
+        return None, []
     heading = ("# 要重講的內容（最後一個 turn）" if count == 1
                else f"# 要重講的內容（最後 {len(groups)} 個 turn）")
     body = heading + "\n\n" + "\n\n".join(render_turn(group) for group in groups)
@@ -66,7 +76,7 @@ def build_recent(row, count):
     if block:
         blocks.append(block)
     blocks.append(body)
-    return "\n\n---\n\n".join(blocks)
+    return "\n\n---\n\n".join(blocks), cache_messages(groups)
 
 
 def render_list(rows):
@@ -123,12 +133,14 @@ def main(argv):
     row = rows[position]
 
     if options.turns is None:
-        payload, system, label = build_full(row, options.tail), prompts.wait_what(), "跟丟了"
+        payload, messages = build_full(row, options.tail)
+        system, label, mode = prompts.wait_what(), "跟丟了", "lost"
     elif options.turns < 1:
         print("turn 數要大於 0", file=sys.stderr)
         return 1
     else:
-        payload, system = build_recent(row, options.turns), prompts.plain()
+        payload, messages = build_recent(row, options.turns)
+        system, mode = prompts.plain(), "plain"
         label = "白話" if options.turns == 1 else f"白話 x{options.turns}"
     if not payload:
         print(f"「{row['title']}」還沒有可重講的內容", file=sys.stderr)
@@ -137,15 +149,15 @@ def main(argv):
         print(f"⚠ 這支 agent 還在跑，最後一輪可能只有半截（打 -l 看狀態）",
               file=sys.stderr, flush=True)
 
+    key = cache.shared_key_for(mode, messages)
     if not options.no_cache:
-        for candidate in model.candidate_models(options.source, options.model):
-            entry = cache.get(cache.key_for(candidate, system, payload))
-            if entry:
-                print(f"── {label}：{row['title']}  "
-                      f"(快取命中 · 來源 {entry.get('source', candidate)})",
-                      file=sys.stderr, flush=True)
-                print(render.render(entry["answer"], styled))
-                return 0
+        entry = cache.get(key)
+        if entry:
+            print(f"── {label}：{row['title']}  "
+                  f"(快取命中 · 來源 {entry.get('source', '?')})",
+                  file=sys.stderr, flush=True)
+            print(render.render(entry["answer"], styled))
+            return 0
 
     planned = model.candidate_models(options.source, options.model)
     heading = planned[0] if planned else "沒有可用的來源"
@@ -157,8 +169,7 @@ def main(argv):
     except RuntimeError as error:
         print(str(error), file=sys.stderr)
         return 1
-    cache.put(cache.key_for(result["request_model"], system, payload),
-              result["answer"], label, result["source"])
+    cache.put(key, result["answer"], label, result["source"])
     print(render.render(result["answer"], styled))
 
     usage = result["usage"]

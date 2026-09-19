@@ -166,7 +166,7 @@ SIDECAR_API_KEY=...          # http 那條的 key；不給也不報錯，只是�
 
 ## 快取
 
-快取寫在 `~/.cache/cc-sidecar-waitwhat.json`（可用 `SIDECAR_CACHE` 改）。key 拿來源、system prompt 和完整 payload 算 SHA-256，不同來源的回答分開存。`auto` 模式會把每格都查一遍，對上哪個就標哪個來源。
+快取寫在 `~/.cache/cc-sidecar-waitwhat.json`（可用 `SIDECAR_CACHE` 改）。key 拿模式與標準化後的 user／assistant 對話算 SHA-256，不含入口、模型來源或各自的 payload 包裝。因此 terminal `ww` 與 CC 內按鈕會互相命中；哪個入口先產生答案，另一邊就直接沿用。舊版 key 不搬移，同一段舊對話升級後第一次重看仍會重問一次。
 
 同一條指令連敲兩次的實測：**12.09 秒 → 0.877 秒**。
 
