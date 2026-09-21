@@ -27,7 +27,7 @@
 | 3. 「請你重講」這個動作本身扭曲後續推理 | 消掉 | 消掉 |
 | 4. 花 token | 沒消，只是從 CC 的 context 搬到另一次呼叫，還多付一整套 harness 的 system context | 消掉（改花別家的）|
 
-如果你不介意 CC 這個殼知道你按過按鈕、只要模型看不到重講內容，[cc-mod-waitwhat](https://github.com/GGGODLIN/cc-mod-waitwhat) 是跑在 CC 裡面的 Claude Mods 版：按鈕畫在提示框上方，不用切終端機、不用選 session，同一組環境變數與 prompt 覆寫檔。
+如果你不介意 CC 這個殼知道你按過按鈕、只要模型看不到重講內容，[cc-mod-waitwhat](https://github.com/GGGODLIN/cc-mod-waitwhat) 是跑在 CC 裡面的 Claude Mods 版：按鈕畫在提示框上方，不用切終端機、不用選 session，同一組環境變數與 prompt 覆寫檔。在 Orca 裡那兩顆按鈕會改成拆一格終端跑這支 `ww`，session 由下面第一條路自己認。
 
 這裡的核心保證只有一個：**目標 session 的 JSONL 裡完全不會留下重講痕跡**。CC 單向寫檔，外部工具只讀不寫。只要在 CC 裡敲指令，就算加 `!` 跑 shell 都不行，全都會寫進去。
 

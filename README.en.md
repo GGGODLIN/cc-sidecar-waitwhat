@@ -27,7 +27,7 @@ Asking in the session costs you four things. This tool removes two of them:
 
 Cost 3 is the one people miss. Ask a model to re-explain a passage and you've told it that passage matters; the next several turns lean toward it. That's not about explaining well or badly — observing changed the thing observed.
 
-If you only need the model kept in the dark, and don't mind CC's own UI knowing you pressed a button, [cc-mod-waitwhat](https://github.com/GGGODLIN/cc-mod-waitwhat) is the Claude Mods version that runs inside CC: buttons above the prompt, no second terminal, no session picking, same environment variables and prompt overrides.
+If you only need the model kept in the dark, and don't mind CC's own UI knowing you pressed a button, [cc-mod-waitwhat](https://github.com/GGGODLIN/cc-mod-waitwhat) is the Claude Mods version that runs inside CC: buttons above the prompt, no second terminal, no session picking, same environment variables and prompt overrides. Inside Orca those two buttons instead split a pane and run this `ww`, which works out the session on its own through the first route below.
 
 One guarantee holds: **nothing about the replay reaches the target session's JSONL**. That file is written one way, and reading it from outside leaves no trace. Which also means anything typed inside CC fails the bar, including `!` shell escapes.
 
