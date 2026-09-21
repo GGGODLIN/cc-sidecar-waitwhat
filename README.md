@@ -35,7 +35,31 @@
 
 ## 怎麼知道要重講哪一支
 
-有 `herdr agent list` 就很簡單：
+三條路依序試，第一條命中就用它當清單第一列，其餘幾支照樣列出來。
+
+### 第一條：同一個 tab 的鄰居
+
+Orca 和 herdr 都會把 tab id 塞進每一格的環境變數，而且 CC 行程會繼承：
+
+```
+ORCA_TAB_ID     → Orca
+HERDR_TAB_ID    → herdr
+```
+
+ww 讀自己這格的值，用 `ps -E` 掃 CC 行程的環境變數，值一樣的就是同一個 tab 的鄰居。所以在 CC 旁邊拆一格跑 ww，它自己知道要重講哪一支，不必問誰被 focus。
+
+拿到 pid 之後再對 session id，兩條規則：
+
+1. 啟動參數裡有 uuid 就直接用（`claude --resume <id>` / `--session-id <id>`）
+2. 沒有的話，拿行程啟動時間對 session 檔第一筆記錄的時間，5 秒窗內**唯一**命中才算數
+
+不唯一就不猜，跳過。剛開還沒講過話的 CC 根本沒有 session 檔，也一樣跳過——沒講過話就沒有東西可以重講。
+
+這條路不需要呼叫 orca 或 herdr 的任何指令，只讀環境變數。換了多工終端機就是在上面那張表多一行；都沒有的話整條路自動熄火，往下走。
+
+### 第二條：`herdr agent list`
+
+有 herdr 就很簡單：
 
 ```
 agent_session.value      → session id，對到 ~/.claude/projects/**/<id>.jsonl
@@ -46,9 +70,13 @@ terminal_title_stripped  → 人類可讀的名字
 
 不給參數就抓 `focused: true` 那支。用 `-l` 看清單，用 `-s 3` 選第三支。
 
-**沒裝 herdr，請走這條主路徑**：掃描 `~/.claude/projects/`，依每支的「最後一則真人訊息」排序。清單標題直接抓 **CC 最後說的話**，因為真人常只回「a」或「1」，看不出是哪件事。工作目錄直接從檔案裡的 `cwd` 欄位拿（目錄名會把 `/` 和 `.` 轉成 `-`，轉不回來），再用 `ps` 搭配 `lsof` 查活著的進程，濾掉關閉的 session。
+第一條命中時，herdr 只負責補齊清單其餘幾支；`focused` 讓給第一條，因為「你眼前這格」比「全機哪一格被 focus」準。
 
-這做法比 herdr 缺了幾樣：拿不到 `focused`、不知對象是 `idle` 還是 `working`、換對話時會慢一拍（新 session 在你打字前，舊的還佔著位子）。
+### 第三條：掃檔案
+
+**沒裝 herdr，這是主路徑、不是備胎**：掃描 `~/.claude/projects/`，依每支的「最後一則真人訊息」排序。清單標題直接抓 **CC 最後說的話**，因為真人常只回「a」或「1」，看不出是哪件事。工作目錄直接從檔案裡的 `cwd` 欄位拿（目錄名會把 `/` 和 `.` 轉成 `-`，轉不回來），再用 `ps` 搭配 `lsof` 查活著的進程，濾掉關閉的 session。
+
+這做法比 herdr 缺了幾樣：拿不到 `focused`、不知對象是 `idle` 還是 `working`、換對話時會慢一拍（新 session 在你打字前，舊的還佔著位子）。第一條路補得回前兩樣裡的第一樣。
 
 **不要用 mtime 排序**。背景 agent 一直寫檔，你盯著看的那支反而最久沒動，排出來正好是反的。
 
@@ -195,4 +223,4 @@ ww 1 --no-cache    # 強制重問一次
 python3 -m unittest discover -s tests
 ```
 
-共有 59 個測試，覆蓋解析邏輯、尋找 session、prompt 覆寫、快取、渲染與來源路由（沒 rich 的環境會 skip 掉 2 個）。`cmd` 測項拿 `cat`、`head`、`false` 模擬 LLM，`from_files` 用 fixture JSONL，不用開模型也不用裝 herdr。herdr 依賴外在環境，沒有自動化測試，直接執行 `ww -l` 看有沒有列出狀態就好。
+共有 84 個測試，覆蓋解析邏輯、尋找 session、tab 鄰居比對、prompt 覆寫、快取、渲染與來源路由（沒 rich 的環境會 skip 掉 2 個）。`cmd` 測項拿 `cat`、`head`、`false` 模擬 LLM，`from_files` 與 `from_pane` 用 fixture JSONL 加假的行程清單，不用開模型、不用裝 herdr、也不用真的在 Orca 裡跑。herdr 與 Orca 的實機行為依賴外在環境，沒有自動化測試，直接在 CC 旁邊拆一格跑 `ww -l`，看第一列有沒有標成你正在看的那支。

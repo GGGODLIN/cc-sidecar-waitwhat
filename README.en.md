@@ -35,7 +35,31 @@ The guarantee covers the target session, not all of `~/.claude`. `claude -p` ope
 
 ## Picking the session
 
-If you run [herdr](https://github.com/herdrdev/herdr), `herdr agent list` answers directly:
+Three routes, tried in order. When the first one hits, it leads the list and the rest are still listed below it.
+
+### First: the neighbour in the same tab
+
+Orca and herdr both put a tab id into every pane's environment, and the CC process inherits it:
+
+```
+ORCA_TAB_ID     → Orca
+HERDR_TAB_ID    → herdr
+```
+
+ww reads its own pane's value and scans CC processes' environments with `ps -E`; a matching value means the same tab. So split a pane next to CC, run ww there, and it knows which session you mean without asking anyone what is focused.
+
+From the pid, the session id follows from two rules:
+
+1. a uuid on the command line wins (`claude --resume <id>` / `--session-id <id>`)
+2. otherwise match the process start time against the first record in each session file, and accept it only if exactly one lands within 5 seconds
+
+Not unique means no guess — skip it. A CC that just opened has no session file at all, so it is skipped too: nothing said, nothing to re-explain.
+
+This route calls neither the orca nor the herdr CLI; it only reads environment variables. A different multiplexer is one more row in that table, and with none of them the route switches itself off and the next one runs.
+
+### Second: `herdr agent list`
+
+If you run [herdr](https://github.com/herdrdev/herdr), it answers directly:
 
 ```
 agent_session.value      → session id, maps to ~/.claude/projects/**/<id>.jsonl
@@ -46,9 +70,13 @@ terminal_title_stripped  → a name a human can read
 
 No argument takes the focused one. `-l` lists, `-s 3` picks the third.
 
+When the first route hits, herdr only fills in the rest of the list; `focused` yields to it, because "the pane in front of you" beats "the pane focused somewhere on this machine".
+
+### Third: scan the files
+
 Without herdr this is your main path, not a fallback: scan `~/.claude/projects/`, sort each session by its last human-typed message, title rows with **what CC said last** — not what you said, since you answer "a" and "ok" too often to tell conversations apart — read cwd from the record rather than reversing the directory slug (that slug replaces both `/` and `.` with `-`, so it can't be reversed), then use `ps` and `lsof` to drop sessions with no live claude process.
 
-You lose three things: no `focused`, no idle/working status, and a lag when you switch sessions, since the new one has no human message yet.
+You lose three things: no `focused`, no idle/working status, and a lag when you switch sessions, since the new one has no human message yet. The first route wins back the `focused` one.
 
 Don't sort by mtime. Background agents write constantly, so the session you're reading is the stalest one — the ordering comes out backwards.
 
@@ -179,7 +207,7 @@ Developed on Python 3.14, standard library only. The oldest API used is `subproc
 python3 -m unittest discover -s tests
 ```
 
-59 of them, covering parsing, session lookup, prompt overrides, cache, terminal rendering and source routing. Two skip without rich. The `cmd` path is tested with `cat`, `head` and `false` standing in for an LLM, and `from_files` runs against fixture JSONL, so neither needs a real model or herdr. The herdr path depends on external state and has no automated test.
+84 of them, covering parsing, session lookup, same-tab neighbour matching, prompt overrides, cache, terminal rendering and source routing. Two skip without rich. The `cmd` path is tested with `cat`, `head` and `false` standing in for an LLM; `from_files` and `from_pane` run against fixture JSONL plus a fake process list, so none of them needs a real model, herdr, or a live Orca. The herdr and Orca paths depend on external state and have no automated test — split a pane next to CC, run `ww -l`, and check that the first row is the session you are looking at.
 
 ## License
 
