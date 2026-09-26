@@ -177,6 +177,8 @@ Without rich a fifty-line fallback handles bold, inline code, fences, bullets an
 
 Styling turns itself off when stdout isn't a terminal, so `ww 1 > out.md` gives you clean markdown. `--raw` and `NO_COLOR=1` also disable it.
 
+For programs, pass `--session-id <UUID> --json`: the UUID names the session directly instead of the reordering `-s` list, and stdout carries exactly one JSON object — `answer`, `cached`, `source` and `key` on success, `{"ok": false, "error": ...}` on failure. Collie's phone "plain / lost" buttons call it this way.
+
 ## Cache
 
 `~/.cache/cc-sidecar-waitwhat.json`, overridable with `SIDECAR_CACHE`. Keys are SHA-256 over the mode plus normalized user/assistant text, excluding the entry point, model source and each tool's payload wrapper. Terminal `ww` and the in-CC buttons therefore hit each other's entries: whichever one answers first supplies the cached answer. Old keys are not migrated, so the first replay of an old conversation after upgrading still calls the model once.

@@ -192,6 +192,8 @@ SIDECAR_API_KEY=...          # http 那條的 key；不給也不報錯，只是�
 
 **只要輸出不是 terminal 就會自動關閉樣式**。像 `ww 1 > out.md` 或 pipe 給其他指令，拿到的都是乾淨的 markdown。加 `--raw` 會強制關掉，也支援 `NO_COLOR=1`。
 
+給程式呼叫時用 `--session-id <UUID> --json`：用 UUID 直接指定 session，不經會變動順序的 `-s` 清單；stdout 只印一個 JSON 物件，成功時含 `answer`、`cached`、`source`、`key`，失敗時是 `{"ok": false, "error": ...}`。Collie 手機版的「白話／跟丟了」就是這樣呼叫。
+
 ## 快取
 
 快取寫在 `~/.cache/cc-sidecar-waitwhat.json`（可用 `SIDECAR_CACHE` 改）。key 拿模式與標準化後的 user／assistant 對話算 SHA-256，不含入口、模型來源或各自的 payload 包裝。因此 terminal `ww` 與 CC 內按鈕會互相命中；哪個入口先產生答案，另一邊就直接沿用。舊版 key 不搬移，同一段舊對話升級後第一次重看仍會重問一次。
