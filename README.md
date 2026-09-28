@@ -4,7 +4,7 @@
 
 *[English](README.en.md)*
 
-![cc-sidecar-waitwhat demo](screenshots/demo.gif)
+https://github.com/user-attachments/assets/fc7e5ac4-f6e9-4d0b-a556-309777a61a19
 
 | 指令 | 做什麼 | 送什麼給模型 | 實測 |
 |---|---|---|---|
