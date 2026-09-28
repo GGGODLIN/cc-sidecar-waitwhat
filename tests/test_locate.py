@@ -104,10 +104,6 @@ def record(pid=1, command="/usr/local/bin/claude", offset=0.0, stamp=STAMP):
 
 
 class ContainerTest(unittest.TestCase):
-    def test_orca_wins_when_both_multiplexers_are_present(self):
-        found = locate.container({"ORCA_TAB_ID": "tab-o", "HERDR_TAB_ID": "tab-h"})
-        self.assertEqual(("ORCA_TAB_ID", "tab-o"), found)
-
     def test_herdr_is_used_on_its_own(self):
         self.assertEqual(("HERDR_TAB_ID", "w4:tP7"),
                          locate.container({"HERDR_TAB_ID": "w4:tP7"}))
@@ -116,7 +112,7 @@ class ContainerTest(unittest.TestCase):
         self.assertEqual((None, None), locate.container({"TERM_PROGRAM": "ghostty"}))
 
     def test_an_empty_value_does_not_count_as_a_container(self):
-        self.assertEqual((None, None), locate.container({"ORCA_TAB_ID": ""}))
+        self.assertEqual((None, None), locate.container({"HERDR_TAB_ID": ""}))
 
 
 class PaneTest(LocateTest):
@@ -167,9 +163,9 @@ class PaneTest(LocateTest):
         self.write("mine", [human("問題"), assistant("鄰居這格說的話")])
         rows = locate.from_pane(
             self.root,
-            environ={"ORCA_TAB_ID": "tab-1"},
+            environ={"HERDR_TAB_ID": "tab-1"},
             records=[record(pid=11, offset=1.0), record(pid=22, offset=1.0)],
-            env_of=self.env_of({11: {"ORCA_TAB_ID": "tab-1"}, 22: {"ORCA_TAB_ID": "tab-2"}}),
+            env_of=self.env_of({11: {"HERDR_TAB_ID": "tab-1"}, 22: {"HERDR_TAB_ID": "tab-2"}}),
             cwd_of=self.cwd_of({}))
         self.assertEqual(["mine"], [row["id"] for row in rows])
         self.assertEqual("鄰居這格說的話", rows[0]["title"])
@@ -180,9 +176,9 @@ class PaneTest(LocateTest):
         self.write("mine", [human("問題"), assistant("回答")])
         rows = locate.from_pane(
             self.root,
-            environ={"ORCA_TAB_ID": "tab-1"},
+            environ={"HERDR_TAB_ID": "tab-1"},
             records=[record(pid=11, offset=1.0), record(pid=22, offset=9000.0)],
-            env_of=self.env_of({11: {"ORCA_TAB_ID": "tab-1"}, 22: {"ORCA_TAB_ID": "tab-1"}}),
+            env_of=self.env_of({11: {"HERDR_TAB_ID": "tab-1"}, 22: {"HERDR_TAB_ID": "tab-1"}}),
             cwd_of=self.cwd_of({}))
         self.assertEqual(["mine"], [row["id"] for row in rows])
 
@@ -200,7 +196,7 @@ class CandidatesTest(unittest.TestCase):
     def test_the_pane_session_leads_and_is_not_listed_twice(self):
         with mock.patch.object(locate, "from_pane", return_value=self.rows(["mine"], "pane", True)), \
              mock.patch.object(locate, "others", return_value=self.rows(["mine", "other"], "files")):
-            rows = locate.candidates(environ={"ORCA_TAB_ID": "tab-1"})
+            rows = locate.candidates(environ={"HERDR_TAB_ID": "tab-1"})
         self.assertEqual(["mine", "other"], [row["id"] for row in rows])
         self.assertEqual([True, False], [row["focused"] for row in rows])
         self.assertEqual("pane", rows[0]["source"])
@@ -219,11 +215,11 @@ class CandidatesTest(unittest.TestCase):
         asked.assert_called_once()
         self.assertEqual(["h"], [row["id"] for row in rows])
 
-    def test_an_orca_pane_lists_the_rest_from_files_not_from_herdr(self):
-        with mock.patch.object(locate, "from_herdr", return_value=self.rows(["h"], "herdr")) as skipped, \
+    def test_without_a_container_the_listing_falls_back_from_herdr_to_files(self):
+        with mock.patch.object(locate, "from_herdr", return_value=[]) as asked, \
              mock.patch.object(locate, "from_files", return_value=self.rows(["f"], "files")):
-            rows = locate.others(var="ORCA_TAB_ID")
-        skipped.assert_not_called()
+            rows = locate.others(var=None)
+        asked.assert_called_once()
         self.assertEqual(["f"], [row["id"] for row in rows])
 
 

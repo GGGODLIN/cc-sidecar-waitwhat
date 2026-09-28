@@ -12,7 +12,7 @@ PROJECTS = pathlib.Path.home() / ".claude" / "projects"
 FILE_WINDOW_SECONDS = 7200
 START_WINDOW_SECONDS = 5.0
 CLAUDE_PROCESS = re.compile(r"(^|/)claude(\s|$)")
-CONTAINER_VARS = ("ORCA_TAB_ID", "HERDR_TAB_ID")
+CONTAINER_VARS = ("HERDR_TAB_ID",)
 PS_ROW = re.compile(r"\s*(\d+)\s+(\w{3} \w{3}\s+\d+ \d\d:\d\d:\d\d \d{4})\s+(.*)")
 ARGV_SESSION = re.compile(r"--(?:resume|session-id)[= ]([0-9a-f-]{36})")
 UNSET = object()
@@ -265,11 +265,9 @@ def from_pane(root=PROJECTS, environ=None, records=None, env_of=process_env,
 
 
 def others(root=PROJECTS, var=None):
-    if var == "HERDR_TAB_ID":
-        return from_herdr(root)
     if var is None:
         return from_herdr(root) or from_files(root)
-    return from_files(root)
+    return from_herdr(root)
 
 
 def candidates(root=PROJECTS, environ=None):
