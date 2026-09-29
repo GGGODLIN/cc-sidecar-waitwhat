@@ -4,7 +4,7 @@ Replay what Claude Code just said, from outside the session. CC never finds out 
 
 *[中文版](README.md)*
 
-![cc-sidecar-waitwhat demo](screenshots/demo.gif)
+https://github.com/user-attachments/assets/fc7e5ac4-f6e9-4d0b-a556-309777a61a19
 
 | Command | What it does | What it sends | Measured |
 |---|---|---|---|
