@@ -27,7 +27,7 @@ Asking in the session costs you four things. This tool removes two of them:
 
 Cost 3 is the one people miss. Ask a model to re-explain a passage and you've told it that passage matters; the next several turns lean toward it. That's not about explaining well or badly — observing changed the thing observed.
 
-If you only need the model kept in the dark, and don't mind CC's own UI knowing you pressed a button, [cc-mod-waitwhat](https://github.com/GGGODLIN/cc-mod-waitwhat) is the Claude Mods version that runs inside CC: buttons above the prompt, no second terminal, no session picking, same environment variables and prompt overrides. Inside Orca those two buttons instead split a pane and run this `ww`, which works out the session on its own through the first route below.
+If you only need the model kept in the dark, and don't mind CC's own UI knowing you pressed a button, [cc-mod-waitwhat](https://github.com/GGGODLIN/cc-mod-waitwhat) is the Claude Mods version that runs inside CC: buttons above the prompt, no second terminal, no session picking, same environment variables and prompt overrides.
 
 One guarantee holds: **nothing about the replay reaches the target session's JSONL**. That file is written one way, and reading it from outside leaves no trace. Which also means anything typed inside CC fails the bar, including `!` shell escapes.
 
@@ -39,10 +39,9 @@ Three routes, tried in order. When the first one hits, it leads the list and the
 
 ### First: the neighbour in the same tab
 
-Orca and herdr both put a tab id into every pane's environment, and the CC process inherits it:
+herdr puts a tab id into every pane's environment, and the CC process inherits it:
 
 ```
-ORCA_TAB_ID     → Orca
 HERDR_TAB_ID    → herdr
 ```
 
@@ -55,7 +54,7 @@ From the pid, the session id follows from two rules:
 
 Not unique means no guess — skip it. A CC that just opened has no session file at all, so it is skipped too: nothing said, nothing to re-explain.
 
-This route calls neither the orca nor the herdr CLI; it only reads environment variables. A different multiplexer is one more row in that table, and with none of them the route switches itself off and the next one runs.
+This route calls no CLI at all; it only reads environment variables. Without that variable the route switches itself off and the next one runs.
 
 ### Second: `herdr agent list`
 
@@ -209,7 +208,7 @@ Developed on Python 3.14, standard library only. The oldest API used is `subproc
 python3 -m unittest discover -s tests
 ```
 
-84 of them, covering parsing, session lookup, same-tab neighbour matching, prompt overrides, cache, terminal rendering and source routing. Two skip without rich. The `cmd` path is tested with `cat`, `head` and `false` standing in for an LLM; `from_files` and `from_pane` run against fixture JSONL plus a fake process list, so none of them needs a real model, herdr, or a live Orca. The herdr and Orca paths depend on external state and have no automated test — split a pane next to CC, run `ww -l`, and check that the first row is the session you are looking at.
+88 of them, covering parsing, session lookup, same-tab neighbour matching, prompt overrides, cache, terminal rendering and source routing. Two skip without rich. The `cmd` path is tested with `cat`, `head` and `false` standing in for an LLM; `from_files` and `from_pane` run against fixture JSONL plus a fake process list, so none of them needs a real model or a herdr install. herdr's live behaviour depends on external state and has no automated test — split a pane next to CC, run `ww -l`, and check that the first row is the session you are looking at.
 
 ## License
 

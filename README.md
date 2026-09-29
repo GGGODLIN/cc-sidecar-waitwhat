@@ -27,7 +27,7 @@
 | 3. 「請你重講」這個動作本身扭曲後續推理 | 消掉 | 消掉 |
 | 4. 花 token | 沒消，只是從 CC 的 context 搬到另一次呼叫，還多付一整套 harness 的 system context | 消掉（改花別家的）|
 
-如果你不介意 CC 這個殼知道你按過按鈕、只要模型看不到重講內容，[cc-mod-waitwhat](https://github.com/GGGODLIN/cc-mod-waitwhat) 是跑在 CC 裡面的 Claude Mods 版：按鈕畫在提示框上方，不用切終端機、不用選 session，同一組環境變數與 prompt 覆寫檔。在 Orca 裡那兩顆按鈕會改成拆一格終端跑這支 `ww`，session 由下面第一條路自己認。
+如果你不介意 CC 這個殼知道你按過按鈕、只要模型看不到重講內容，[cc-mod-waitwhat](https://github.com/GGGODLIN/cc-mod-waitwhat) 是跑在 CC 裡面的 Claude Mods 版：按鈕畫在提示框上方，不用切終端機、不用選 session，同一組環境變數與 prompt 覆寫檔。
 
 這裡的核心保證只有一個：**目標 session 的 JSONL 裡完全不會留下重講痕跡**。CC 單向寫檔，外部工具只讀不寫。只要在 CC 裡敲指令，就算加 `!` 跑 shell 都不行，全都會寫進去。
 
@@ -39,10 +39,9 @@
 
 ### 第一條：同一個 tab 的鄰居
 
-Orca 和 herdr 都會把 tab id 塞進每一格的環境變數，而且 CC 行程會繼承：
+herdr 會把 tab id 塞進每一格的環境變數，而且 CC 行程會繼承：
 
 ```
-ORCA_TAB_ID     → Orca
 HERDR_TAB_ID    → herdr
 ```
 
@@ -55,7 +54,7 @@ ww 讀自己這格的值，用 `ps -E` 掃 CC 行程的環境變數，值一樣�
 
 不唯一就不猜，跳過。剛開還沒講過話的 CC 根本沒有 session 檔，也一樣跳過——沒講過話就沒有東西可以重講。
 
-這條路不需要呼叫 orca 或 herdr 的任何指令，只讀環境變數。換了多工終端機就是在上面那張表多一行；都沒有的話整條路自動熄火，往下走。
+這條路不需要呼叫 herdr 的任何指令，只讀環境變數。沒有這個變數的話整條路自動熄火，往下走。
 
 ### 第二條：`herdr agent list`
 
@@ -225,4 +224,4 @@ ww 1 --no-cache    # 強制重問一次
 python3 -m unittest discover -s tests
 ```
 
-共有 84 個測試，覆蓋解析邏輯、尋找 session、tab 鄰居比對、prompt 覆寫、快取、渲染與來源路由（沒 rich 的環境會 skip 掉 2 個）。`cmd` 測項拿 `cat`、`head`、`false` 模擬 LLM，`from_files` 與 `from_pane` 用 fixture JSONL 加假的行程清單，不用開模型、不用裝 herdr、也不用真的在 Orca 裡跑。herdr 與 Orca 的實機行為依賴外在環境，沒有自動化測試，直接在 CC 旁邊拆一格跑 `ww -l`，看第一列有沒有標成你正在看的那支。
+共有 88 個測試，覆蓋解析邏輯、尋找 session、tab 鄰居比對、prompt 覆寫、快取、渲染與來源路由（沒 rich 的環境會 skip 掉 2 個）。`cmd` 測項拿 `cat`、`head`、`false` 模擬 LLM，`from_files` 與 `from_pane` 用 fixture JSONL 加假的行程清單，不用開模型、也不用裝 herdr。herdr 的實機行為依賴外在環境，沒有自動化測試，直接在 CC 旁邊拆一格跑 `ww -l`，看第一列有沒有標成你正在看的那支。
