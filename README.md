@@ -144,6 +144,8 @@ SIDECAR_CMD='my-own-wrapper'          # 自己寫一支讀 stdin 印 stdout 的�
 
 選定來源就是**嚴格模式**。下了 `--source cmd` 只要失敗就 exit 1，不主動 fallback。
 
+`sidecar-webchat` 在送出狀態不明時會回 `exit 3` 與 stderr 的 `SIDECAR_WEB_RETRY_UNSAFE`。即使選 `auto`，這種狀態或程序逾時也會停止，不再重送到 HTTP；不帶這個標記的其他 `exit 3` 仍遵守既有回退規則。Thinking 明確配額拒絕後的 Instant 嘗試由該共用發送器處理，`ww` 不另發一次。這不保證外部 SDK 自己或手動操作不會重試。
+
 ### 環境變數
 
 ```bash

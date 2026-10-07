@@ -19,6 +19,10 @@ SOURCES = ("auto", "cmd", "http")
 DEFAULT_SOURCE = os.environ.get("SIDECAR_SOURCE", "auto")
 
 
+class SubmissionUncertain(RuntimeError):
+    pass
+
+
 def command_line():
     configured = os.environ.get("SIDECAR_CMD")
     if configured:
@@ -57,7 +61,11 @@ def ask_command(system, payload, command, timeout=300):
     except FileNotFoundError as error:
         raise RuntimeError(f"找不到指令：{command}") from error
     except subprocess.TimeoutExpired as error:
-        raise RuntimeError(f"{command} 超過 {timeout} 秒沒有回應") from error
+        raise SubmissionUncertain(f"送出狀態不明：{command} 超過 {timeout} 秒沒有回應，停止回退") from error
+    if finished.returncode < 0:
+        raise SubmissionUncertain("送出狀態不明：程序被訊號終止，停止回退")
+    if finished.returncode == 3 and any(line.startswith("SIDECAR_WEB_RETRY_UNSAFE ") for line in finished.stderr.splitlines()):
+        raise SubmissionUncertain("送出狀態不明，停止回退以免重複請求")
     if finished.returncode != 0:
         detail = (finished.stderr or finished.stdout or "").strip()[:200]
         raise RuntimeError(f"{command} 失敗（exit {finished.returncode}）：{detail}")
@@ -116,6 +124,8 @@ def ask(system, payload, source=DEFAULT_SOURCE, http_model=MODEL, timeout=300):
                 return {"answer": answer, "source": f"cmd:{command}",
                         "request_model": f"cmd:{command}", "usage": usage,
                         "fallback": reasons[0] if reasons else None}
+            except SubmissionUncertain:
+                raise
             except RuntimeError as error:
                 reasons.append(str(error))
                 if source == "cmd":
