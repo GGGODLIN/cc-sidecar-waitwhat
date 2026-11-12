@@ -103,7 +103,7 @@ def build_parser():
     parser.add_argument("-l", "--list", action="store_true", help="列出活著的 session")
     parser.add_argument("-m", "--model", default=model.MODEL, help="http 來源要用哪顆模型")
     parser.add_argument("--source", choices=model.SOURCES, default=model.DEFAULT_SOURCE,
-                        help="auto 依序試 web → cmd → http；指定單一來源則失敗就直接報錯")
+                        help="auto 依序試 cmd → http；指定單一來源則失敗就直接報錯")
     parser.add_argument("--no-cache", action="store_true", help="跳過快取，重新問一次")
     parser.add_argument("--raw", action="store_true", help="輸出原始 markdown，不套終端機樣式")
     parser.add_argument("--cache-stats", action="store_true", help="看快取現況")

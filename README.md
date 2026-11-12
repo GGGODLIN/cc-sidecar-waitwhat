@@ -226,4 +226,4 @@ ww 1 --no-cache    # 強制重問一次
 python3 -m unittest discover -s tests
 ```
 
-共有 88 個測試，覆蓋解析邏輯、尋找 session、tab 鄰居比對、prompt 覆寫、快取、渲染與來源路由（沒 rich 的環境會 skip 掉 2 個）。`cmd` 測項拿 `cat`、`head`、`false` 模擬 LLM，`from_files` 與 `from_pane` 用 fixture JSONL 加假的行程清單，不用開模型、也不用裝 herdr。herdr 的實機行為依賴外在環境，沒有自動化測試，直接在 CC 旁邊拆一格跑 `ww -l`，看第一列有沒有標成你正在看的那支。
+共有 93 個測試，覆蓋解析邏輯、尋找 session、tab 鄰居比對、prompt 覆寫、快取、渲染與來源路由（沒 rich 的環境會 skip 掉 2 個）。`cmd` 測項拿 `cat`、`head`、`false` 模擬 LLM，`from_files` 與 `from_pane` 用 fixture JSONL 加假的行程清單，不用開模型、也不用裝 herdr。herdr 的實機行為依賴外在環境，沒有自動化測試，直接在 CC 旁邊拆一格跑 `ww -l`，看第一列有沒有標成你正在看的那支。
