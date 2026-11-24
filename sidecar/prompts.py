@@ -38,9 +38,12 @@ DEFAULT_PLAIN = """使用者剛看完一段技術說明，說看不懂。你的�
 
 def load(name, fallback):
     path = PROMPT_DIR / f"{name}.md"
-    if not path.exists():
+    try:
+        if not path.is_file():
+            return fallback
+        text = path.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeError):
         return fallback
-    text = path.read_text(encoding="utf-8").strip()
     return text or fallback
 
 
@@ -54,4 +57,9 @@ def plain():
 
 def source_of(name):
     path = PROMPT_DIR / f"{name}.md"
-    return str(path) if path.exists() and path.read_text(encoding="utf-8").strip() else "內建預設"
+    try:
+        if path.is_file() and path.read_text(encoding="utf-8").strip():
+            return str(path)
+    except (OSError, UnicodeError):
+        return "內建預設"
+    return "內建預設"

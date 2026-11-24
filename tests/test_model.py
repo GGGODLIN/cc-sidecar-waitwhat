@@ -81,7 +81,7 @@ class RoutingTest(unittest.TestCase):
     def test_uncertain_web_submission_stops_auto_without_an_http_request(self):
         command = "import sys; print('SIDECAR_WEB_RETRY_UNSAFE {}', file=sys.stderr); sys.exit(3)"
         os.environ["SIDECAR_CMD"] = shlex.join([sys.executable, "-c", command])
-        with patch("urllib.request.urlopen", side_effect=AssertionError("不得重送 HTTP")):
+        with patch("urllib.request.OpenerDirector.open", side_effect=AssertionError("不得重送 HTTP")):
             with self.assertRaises(RuntimeError) as caught:
                 model.ask("系統指示", "內容", source="auto")
         self.assertIn("送出狀態不明", str(caught.exception))
@@ -89,13 +89,13 @@ class RoutingTest(unittest.TestCase):
     def test_unsafe_marker_after_fallback_notice_still_stops_auto(self):
         command = "import sys; print('Thinking 改用 Instant', file=sys.stderr); print('SIDECAR_WEB_RETRY_UNSAFE {}', file=sys.stderr); sys.exit(3)"
         os.environ["SIDECAR_CMD"] = shlex.join([sys.executable, "-c", command])
-        with patch("urllib.request.urlopen", side_effect=AssertionError("Instant 狀態不明後不得重送")):
+        with patch("urllib.request.OpenerDirector.open", side_effect=AssertionError("Instant 狀態不明後不得重送")):
             with self.assertRaises(RuntimeError):
                 model.ask("系統指示", "內容", source="auto")
 
     def test_process_timeout_stops_auto_without_an_http_request(self):
         with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cat", 300)), patch(
-                "urllib.request.urlopen", side_effect=AssertionError("逾時後不得重送 HTTP")):
+                "urllib.request.OpenerDirector.open", side_effect=AssertionError("逾時後不得重送 HTTP")):
             with self.assertRaises(RuntimeError) as caught:
                 model.ask("系統指示", "內容", source="auto")
         self.assertIn("送出狀態不明", str(caught.exception))
@@ -103,14 +103,14 @@ class RoutingTest(unittest.TestCase):
     def test_signalled_process_stops_auto_without_an_http_request(self):
         stopped = subprocess.CompletedProcess(["cat"], -9, stdout="", stderr="")
         with patch("subprocess.run", return_value=stopped), patch(
-                "urllib.request.urlopen", side_effect=AssertionError("程序被終止後不得重送")):
+                "urllib.request.OpenerDirector.open", side_effect=AssertionError("程序被終止後不得重送")):
             with self.assertRaises(RuntimeError):
                 model.ask("系統指示", "內容", source="auto")
 
     def test_unrelated_exit_three_keeps_the_existing_http_fallback(self):
         os.environ["SIDECAR_CMD"] = shlex.join([sys.executable, "-c", "import sys; sys.exit(3)"])
         response = io.BytesIO(json.dumps({"choices": [{"message": {"content": "HTTP answer"}}]}).encode())
-        with patch("urllib.request.urlopen", return_value=response), patch.dict(os.environ, {"SIDECAR_API_KEY": "fixture"}):
+        with patch("urllib.request.OpenerDirector.open", return_value=response), patch.dict(os.environ, {"SIDECAR_API_KEY": "fixture"}):
             result = model.ask("系統指示", "內容", source="auto")
         self.assertEqual(result["answer"], "HTTP answer")
         self.assertTrue(result["source"].startswith("http:"))

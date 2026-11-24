@@ -13,19 +13,31 @@ STATUS_LABEL = {"idle": "等你回", "working": "還在跑", "blocked": "卡住�
 
 
 def glossary_block(content_length=None):
-    if not GLOSSARY.exists():
+    try:
+        if not GLOSSARY.is_file():
+            return None
+        text = GLOSSARY.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeError):
         return None
-    text = GLOSSARY.read_text().strip()
     if not text or (content_length is not None and len(text) >= content_length):
         return None
     return "# 使用者的個人語彙表（重講時優先用這裡的說法）\n" + text
 
 
 def repo_glossary_block(cwd):
-    path = pathlib.Path(cwd or "/nonexistent") / "openspec" / "glossary.md"
-    if not path.exists():
+    if not isinstance(cwd, str) or not cwd or "\x00" in cwd:
         return None
-    return "# 這個 repo 的領域詞彙\n" + path.read_text()[:4000]
+    path = pathlib.Path(cwd) / "openspec" / "glossary.md"
+    try:
+        if not path.is_file():
+            return None
+        with path.open("r", encoding="utf-8", errors="ignore") as handle:
+            text = handle.read(4000)
+    except OSError:
+        return None
+    if not text.strip():
+        return None
+    return "# 這個 repo 的領域詞彙\n" + text
 
 
 def render_turn(group):
@@ -85,10 +97,14 @@ def build_recent(row, count):
 def render_list(rows):
     lines = []
     for index, row in enumerate(rows, 1):
-        marker = "→" if row["focused"] else " "
-        status = STATUS_LABEL.get(row["status"], row["status"])
-        lines.append(f"{marker} [{index}] {row['title']}   ({status})")
-        lines.append(f"       {row['cwd']}")
+        marker = "→" if row.get("focused") else " "
+        status_val = row.get("status")
+        raw_status = STATUS_LABEL.get(status_val, status_val) if isinstance(status_val, str) else "unknown"
+        status = render.sanitize_terminal(str(raw_status))
+        title = render.sanitize_terminal(str(row.get("title", "")))
+        cwd = render.sanitize_terminal(str(row.get("cwd", "")))
+        lines.append(f"{marker} [{index}] {title}   ({status})")
+        lines.append(f"       {cwd}")
     return "\n".join(lines)
 
 
@@ -115,12 +131,13 @@ def build_parser():
     return parser
 
 
-def row_for_id(session_id, root=locate.PROJECTS):
+def row_for_id(session_id, root=None):
     # The ordinal -s is a position in a list that reorders as sessions come and go, so a caller that
     # already knows which session it means passes the UUID and never goes through the list.
+    target_root = locate.PROJECTS if root is None else root
     if not SESSION_ID.fullmatch(session_id or ""):
         return None, "session id 不是 UUID"
-    path = locate.session_path(session_id, root)
+    path = locate.session_path(session_id, target_root)
     if path is None:
         return None, f"找不到 session {session_id}"
     summary = locate.session_summary(path) or {}
@@ -134,7 +151,7 @@ def emit(options, payload, text=None, error=None):
     if options.json:
         print(json.dumps(payload, ensure_ascii=False))
     elif error is not None:
-        print(error, file=sys.stderr)
+        print(render.sanitize_terminal(str(error)), file=sys.stderr)
     elif text is not None:
         print(text)
     return 0 if payload.get("ok") else 1
@@ -145,8 +162,10 @@ def main(argv):
 
     if options.cache_stats:
         total, labels = cache.stats()
-        detail = "  ".join(f"{name} {count}" for name, count in sorted(labels.items()))
-        print(f"{cache.PATH}\n{total} 筆  {detail}")
+        detail = "  ".join(
+            f"{render.sanitize_terminal(str(name))} {count}"
+            for name, count in sorted(labels.items()))
+        print(f"{render.sanitize_terminal(str(cache.PATH))}\n{total} 筆  {detail}")
         return 0
 
     def fail(message):
@@ -154,7 +173,14 @@ def main(argv):
 
     def note(message):
         if not options.json:
-            print(message, file=sys.stderr, flush=True)
+            print(render.sanitize_terminal(str(message)), file=sys.stderr, flush=True)
+
+    if options.source not in model.SOURCES:
+        return fail(f"不支援的來源：{options.source}")
+    if options.tail is not None and options.tail <= 0:
+        return fail("tail 位元組數要大於 0")
+    if options.turns is not None and options.turns < 1:
+        return fail("turn 數要大於 0")
 
     styled = render.enabled() and not options.raw and not options.json
     if options.session_id is not None:
@@ -177,8 +203,6 @@ def main(argv):
     if options.turns is None:
         payload, messages = build_full(row, options.tail)
         system, label, mode = prompts.wait_what(), "跟丟了", "lost"
-    elif options.turns < 1:
-        return fail("turn 數要大於 0")
     else:
         payload, messages = build_recent(row, options.turns)
         system, mode = prompts.plain(), "plain"
@@ -193,12 +217,19 @@ def main(argv):
         return {"ok": True, "sessionId": row["id"], "mode": mode, "label": label, "key": key,
                 "answer": answer, "source": source, "cached": cached}
 
+    def display_text(answer):
+        if styled:
+            return render.render(answer, True)
+        if options.raw:
+            return render.render(answer, False)
+        return render.sanitize_terminal(render.render(answer, False))
+
     if not options.no_cache:
         entry = cache.get(key)
         if entry:
             note(f"── {label}：{row['title']}  (快取命中 · 來源 {entry.get('source', '?')})")
             return emit(options, result_of(entry["answer"], entry.get("source", "?"), True),
-                        text=render.render(entry["answer"], styled))
+                        text=display_text(entry["answer"]))
 
     planned = model.candidate_models(options.source, options.model)
     heading = planned[0] if planned else "沒有可用的來源"
@@ -208,16 +239,19 @@ def main(argv):
         result = model.ask(system, payload, options.source, options.model)
     except RuntimeError as error:
         return fail(str(error))
-    cache.put(key, result["answer"], label, result["source"])
+    try:
+        cache.put(key, result["answer"], label, result["source"])
+    except OSError as error:
+        note(f"⚠ 快取寫入失敗：{error}")
     if options.json:
         return emit(options, result_of(result["answer"], result["source"], False))
-    print(render.render(result["answer"], styled))
+    print(display_text(result["answer"]))
 
-    usage = result["usage"]
+    raw_usage = result.get("usage")
+    usage = raw_usage if isinstance(raw_usage, dict) else {}
     tokens = ""
     if usage.get("prompt_tokens"):
         tokens = f"  輸入 {usage['prompt_tokens']} / 輸出 {usage.get('completion_tokens')} token"
-    note = f"  ← 退回原因：{result['fallback']}" if result["fallback"] else ""
-    print(f"── {time.time() - started:.1f}s  來源 {result['source']}{tokens}{note}",
-          file=sys.stderr)
+    fallback_note = f"  ← 退回原因：{result['fallback']}" if result.get("fallback") else ""
+    note(f"── {time.time() - started:.1f}s  來源 {result['source']}{tokens}{fallback_note}")
     return 0

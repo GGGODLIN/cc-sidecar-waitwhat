@@ -6,49 +6,84 @@ COMMAND_TAG = re.compile(r"<command-(name|message|args)>.*?</command-\1>", re.S)
 
 
 def iter_records(path, tail=None):
-    size = path.stat().st_size
-    if tail is None or size <= tail:
-        lines = path.read_text(errors="ignore").splitlines()
-    else:
-        with path.open("rb") as handle:
-            handle.seek(size - tail)
-            lines = handle.read().decode("utf-8", "ignore").splitlines()[1:]
-    for line in lines:
-        try:
-            yield json.loads(line)
-        except ValueError:
-            continue
+    if tail is not None and tail <= 0:
+        return
+    try:
+        size = path.stat().st_size
+        handle = path.open("rb")
+    except OSError:
+        return
+    with handle:
+        if tail is not None and size > tail:
+            handle.seek(size - tail - 1)
+            if handle.read(1) != b"\n":
+                handle.readline()
+        for raw_line in handle:
+            line = raw_line.decode("utf-8", "ignore").replace("\x00", "").strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(record, dict):
+                yield record
 
 
 def clean(text):
-    return COMMAND_TAG.sub("", REMINDER.sub("", text)).strip()
+    if not isinstance(text, str):
+        return ""
+    cleaned = text.replace("\x00", "")
+    return COMMAND_TAG.sub("", REMINDER.sub("", cleaned)).strip()
 
 
 def text_of(message):
-    content = (message or {}).get("content")
+    if not isinstance(message, dict):
+        return ""
+    content = message.get("content")
     if isinstance(content, str):
         return clean(content)
     if not isinstance(content, list):
         return ""
-    parts = [block.get("text", "") for block in content
-             if isinstance(block, dict) and block.get("type") == "text"]
+    parts = [block.get("text") for block in content
+             if isinstance(block, dict) and block.get("type") == "text"
+             and isinstance(block.get("text"), str)]
     return clean("\n".join(part for part in parts if part))
 
 
 def is_human(record):
-    return (record.get("type") == "user"
-            and (record.get("origin") or {}).get("kind") == "human")
+    if not isinstance(record, dict):
+        return False
+    origin = record.get("origin")
+    return record.get("type") == "user" and isinstance(origin, dict) and origin.get("kind") == "human"
+
+
+def tool_calls(record):
+    if not isinstance(record, dict):
+        return []
+    message = record.get("message")
+    if not isinstance(message, dict):
+        return []
+    content = message.get("content")
+    if not isinstance(content, list):
+        return []
+    found = []
+    for block in content:
+        if isinstance(block, dict) and block.get("type") == "tool_use":
+            raw_input = block.get("input")
+            try:
+                arguments = json.dumps(raw_input if raw_input is not None else {}, ensure_ascii=False)
+            except (TypeError, ValueError):
+                arguments = "{}"
+            name = block.get("name")
+            label = name.replace("\x00", "") if isinstance(name, str) and name else "unknown"
+            found.append(f"{label}: {arguments.replace(chr(0), '')[:160]}")
+    return found
 
 
 def tool_call(record):
-    content = (record.get("message") or {}).get("content")
-    if not isinstance(content, list):
-        return None
-    for block in content:
-        if isinstance(block, dict) and block.get("type") == "tool_use":
-            arguments = json.dumps(block.get("input") or {}, ensure_ascii=False)
-            return f"{block.get('name')}: {arguments[:160]}"
-    return None
+    calls = tool_calls(record)
+    return calls[0] if calls else None
 
 
 def transcript(path, tail=None):
@@ -58,21 +93,26 @@ def transcript(path, tail=None):
     for record in iter_records(path, tail):
         if record.get("isSidechain"):
             continue
-        if "cwd" not in meta and record.get("cwd"):
-            meta["cwd"] = record["cwd"]
-        if "started" not in meta and record.get("timestamp"):
-            meta["started"] = record["timestamp"]
+        cwd = record.get("cwd")
+        if "cwd" not in meta and isinstance(cwd, str):
+            clean_cwd = cwd.replace("\x00", "")
+            if clean_cwd:
+                meta["cwd"] = clean_cwd
+        raw_stamp = record.get("timestamp")
+        stamp = raw_stamp.replace("\x00", "") if isinstance(raw_stamp, str) else ""
+        if "started" not in meta and stamp:
+            meta["started"] = stamp
         if is_human(record):
             text = text_of(record.get("message"))
             if text:
-                turns.append(("human", record.get("timestamp"), text))
+                turns.append(("human", stamp, text))
         elif record.get("type") == "assistant":
             text = text_of(record.get("message"))
             if text:
-                turns.append(("assistant", record.get("timestamp"), text))
-            called = tool_call(record)
+                turns.append(("assistant", stamp, text))
+            called = tool_calls(record)
             if called:
-                tools.append(called)
+                tools.extend(called)
     return meta, turns, tools
 
 
@@ -101,9 +141,16 @@ def split_turns(turns):
 
 
 def recent_turns(path, count, tail=3_000_000):
+    if count <= 0 or (tail is not None and tail <= 0):
+        return []
     _, turns, _ = transcript(path, tail)
     groups = split_turns(turns)
-    if len(groups) < count and path.stat().st_size > tail:
-        _, turns, _ = transcript(path, None)
-        groups = split_turns(turns)
+    if tail is not None and len(groups) < count:
+        try:
+            size = path.stat().st_size
+        except OSError:
+            size = 0
+        if size > tail:
+            _, turns, _ = transcript(path, None)
+            groups = split_turns(turns)
     return groups[-count:]
